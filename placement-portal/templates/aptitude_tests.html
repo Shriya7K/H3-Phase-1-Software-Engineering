@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Aptitude tests{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Iteration 1</p>
+    <h1>Aptitude tests</h1>
+    <p class="muted">Practice tests available to you right now.</p>
+  </div>
+  <span class="count-chip">{{ tests|length }} available</span>
+</header>
+
+{% if tests %}
+  <div class="test-grid">
+    {% for test in tests %}
+      <article class="card test-card">
+        <div class="test-top">
+          <span class="badge badge-category">{{ test.category }}</span>
+          <span class="difficulty difficulty-{{ test.difficulty|lower }}">{{ test.difficulty }}</span>
+        </div>
+        <h2>{{ test.name }}</h2>
+        <p class="muted">{{ test.description }}</p>
+        <ul class="test-stats">
+          <li>
+            <strong>{{ test.num_questions }}</strong>
+            <span>questions</span>
+          </li>
+          <li>
+            <strong>{{ test.duration_minutes }}</strong>
+            <span>minutes</span>
+          </li>
+        </ul>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <h2>No aptitude tests yet</h2>
+    <p class="muted">Tests will appear here once they are published.</p>
+  </div>
+{% endif %}
+{% endblock %}

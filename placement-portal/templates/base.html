@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Placement Portal{% endblock %} · Team H3</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f5fbf'/%3E%3Ctext x='16' y='21' font-family='Arial,sans-serif' font-size='13' font-weight='bold' fill='white' text-anchor='middle'%3EH3%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="{{ url_for('index') }}">
+        <span class="brand-mark">H3</span>
+        <span class="brand-text">Placement <strong>Portal</strong></span>
+      </a>
+
+      {% if session.get('user_id') %}
+        <nav class="nav" aria-label="Main">
+          <a href="{{ url_for('opportunities') }}"
+             class="{{ 'active' if request.endpoint in ('opportunities', 'opportunity_detail') }}">
+            Opportunities
+          </a>
+          <a href="{{ url_for('aptitude_tests') }}"
+             class="{{ 'active' if request.endpoint == 'aptitude_tests' }}">
+            Aptitude Tests
+          </a>
+        </nav>
+
+        <div class="user-box">
+          <span class="avatar" aria-hidden="true">{{ session.get('user_name', '?')[:1]|upper }}</span>
+          <span class="user-meta">
+            <strong>{{ session.get('user_name') }}</strong>
+            <span>{{ session.get('user_role')|capitalize }}</span>
+          </span>
+          <form method="post" action="{{ url_for('logout') }}">
+            <button class="btn btn-ghost btn-small" type="submit">Log out</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack" role="status">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    Team H3 · Online Internship &amp; Placement Preparation Portal
+  </footer>
+</body>
+</html>
