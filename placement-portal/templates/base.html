@@ -21,9 +21,17 @@
              class="{{ 'active' if request.endpoint in ('opportunities', 'opportunity_detail') }}">
             Opportunities
           </a>
+          <a href="{{ url_for('applications') }}"
+             class="{{ 'active' if request.endpoint == 'applications' }}">
+            My Applications
+          </a>
           <a href="{{ url_for('aptitude_tests') }}"
-             class="{{ 'active' if request.endpoint == 'aptitude_tests' }}">
+             class="{{ 'active' if request.endpoint in ('aptitude_tests', 'take_aptitude_test', 'test_attempt_result', 'my_test_results') }}">
             Aptitude Tests
+          </a>
+          <a href="{{ url_for('profile') }}"
+             class="{{ 'active' if request.endpoint == 'profile' }}">
+            Profile
           </a>
         </nav>
 

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}My Applications{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Task #15 · FR-08</p>
+    <h1>Track Application Status</h1>
+    <p class="muted">Monitor the progress and recruitment review status of your submitted applications.</p>
+  </div>
+  <span class="count-chip">{{ applications|length }} application{{ 's' if applications|length != 1 }}</span>
+</header>
+
+{% if applications %}
+  <div class="job-grid" style="grid-template-columns: 1fr;">
+    {% for app in applications %}
+      <article class="card job-card" style="gap: 0.8rem;">
+        <div class="job-head">
+          <div>
+            <h2>
+              <a href="{{ url_for('opportunity_detail', opportunity_id=app.opportunity_id) }}">
+                {{ app.title }}
+              </a>
+            </h2>
+            <p class="company">{{ app.company }} · {{ app.location }}</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <span class="badge badge-{{ app.type|lower }}">{{ app.type }}</span>
+            <span class="badge badge-status-{{ app.status|lower|replace(' ', '-') }}" style="font-size: 0.78rem; padding: 0.3rem 0.7rem;">
+              {{ app.status }}
+            </span>
+          </div>
+        </div>
+
+        <dl class="job-meta">
+          <div>
+            <dt>Date Applied</dt>
+            <dd>{{ app.applied_at[:10] }}</dd>
+          </div>
+          <div>
+            <dt>Stipend / Package</dt>
+            <dd class="money">{{ app.stipend }}</dd>
+          </div>
+        </dl>
+
+        {% if app.notes %}
+          <div style="background: #f7f9fc; padding: 0.6rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.85rem; color: var(--ink-soft);">
+            <strong>Notes:</strong> {{ app.notes }}
+          </div>
+        {% endif %}
+
+        {% if session.get('user_role') == 'admin' %}
+          <!-- Admin / Recruiter Status Update Form (TC-06) -->
+          <div style="margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px dashed var(--line); display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <span style="font-size: 0.82rem; font-weight: 600; color: var(--muted);">Admin Update:</span>
+            <form method="post" action="{{ url_for('update_application_status', application_id=app.id) }}" style="display: flex; gap: 0.5rem; align-items: center;">
+              <select name="status" class="select-input" style="padding: 0.3rem 0.6rem; font-size: 0.82rem;">
+                {% for st in ['Submitted', 'Under Review', 'Shortlisted', 'Accepted', 'Rejected'] %}
+                  <option value="{{ st }}" {{ 'selected' if app.status == st }}>{{ st }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-primary btn-small" type="submit">Update</button>
+            </form>
+          </div>
+        {% endif %}
+
+        <div class="job-foot">
+          <span class="muted" style="font-size: 0.78rem;">Last updated: {{ app.updated_at[:16] }}</span>
+          <a class="link-arrow" href="{{ url_for('opportunity_detail', opportunity_id=app.opportunity_id) }}">
+            View opportunity details <span aria-hidden="true">&rarr;</span>
+          </a>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <h2>No applications yet</h2>
+    <p class="muted">You have not applied to any opportunities yet.</p>
+    <a class="btn btn-primary" href="{{ url_for('opportunities') }}" style="margin-top: 1rem;">Explore Open Opportunities</a>
+  </div>
+{% endif %}
+{% endblock %}

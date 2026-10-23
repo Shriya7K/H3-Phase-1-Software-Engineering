@@ -12,6 +12,11 @@
       {% if not opportunity.is_available %}
         <span class="badge badge-closed">Applications closed</span>
       {% endif %}
+      {% if application %}
+        <span class="badge badge-status-{{ application.status|lower|replace(' ', '-') }}">
+          Application Status: {{ application.status }}
+        </span>
+      {% endif %}
     </div>
 
     <h1>{{ opportunity.title }}</h1>
@@ -27,8 +32,35 @@
       <p class="prose">{{ opportunity.eligibility }}</p>
     </section>
 
+    <!-- Application Action Section (Tasks #14 & #15) -->
+    <section class="detail-section" style="border-top: 1px dashed var(--line); padding-top: 1.25rem;">
+      <h2>Application Status</h2>
+      {% if application %}
+        <div class="card" style="padding: 1rem 1.2rem; background: var(--brand-soft); border-color: #cbdcf7;">
+          <p style="margin: 0; font-weight: 600; color: var(--brand-dark);">
+            You applied for this position on {{ application.applied_at[:10] }}.
+          </p>
+          <p style="margin: 0.35rem 0 0.75rem; font-size: 0.9rem; color: var(--ink-soft);">
+            Current status: <strong>{{ application.status }}</strong>
+            {% if application.notes %} — <em>{{ application.notes }}</em>{% endif %}
+          </p>
+          <a class="btn btn-primary btn-small" href="{{ url_for('applications') }}">View in My Applications</a>
+        </div>
+      {% elif opportunity.is_available %}
+        <form method="post" action="{{ url_for('apply_opportunity', opportunity_id=opportunity.id) }}">
+          <div class="field" style="margin-bottom: 0.75rem;">
+            <label for="notes">Application Notes (Optional)</label>
+            <input id="notes" name="notes" type="text" placeholder="e.g. Relevant projects, availability, or portfolio links">
+          </div>
+          <button class="btn btn-primary" type="submit">Submit Application</button>
+        </form>
+      {% else %}
+        <p class="muted">Applications for this opportunity have ended.</p>
+      {% endif %}
+    </section>
+
     <p class="notice">
-      Applying for opportunities is planned for Iteration 2 and is not part of this build.
+      Campus recruiter interview workflows and advanced candidate tracking belong to Iteration 2.
     </p>
   </article>
 

@@ -465,3 +465,92 @@ h2 { font-size: 1.05rem; }
   .job-meta { grid-template-columns: 1fr 1fr; }
   .detail-main { padding: 1.3rem 1.2rem; }
 }
+
+
+/* ---------- Additional Form & Task UI ---------- */
+
+.select-input, .textarea-input {
+  width: 100%;
+  padding: 0.62rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--ink);
+  background: #fbfcfe;
+}
+
+.select-input:focus, .textarea-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(31, 95, 191, 0.14);
+}
+
+.auth-switch {
+  margin-top: 1.15rem;
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+.search-form { display: flex; flex-direction: column; gap: 0.75rem; }
+.search-inputs { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
+.search-buttons { display: flex; gap: 0.5rem; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+/* Status badges */
+.badge-status-submitted { background: #e8f1fd; color: #175cd3; border: 1px solid #c8dcf9; }
+.badge-status-under-review { background: #fef0c7; color: #b54708; border: 1px solid #fedf89; }
+.badge-status-shortlisted { background: #f4ebff; color: #6941c6; border: 1px solid #e9d7fe; }
+.badge-status-accepted { background: #ecfdf3; color: #027a48; border: 1px solid #a6f4c5; }
+.badge-status-rejected { background: #fee4e2; color: #b42318; border: 1px solid #fecdca; }
+
+/* Radio option styles for test attempt */
+.option-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #fafbfd;
+}
+
+.option-label:hover {
+  background: #f0f5fc;
+  border-color: #cbdcf7;
+}
+
+.option-label input[type="radio"] {
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.option-tag {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e2e8ef;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.option-text {
+  font-size: 0.92rem;
+  color: var(--ink);
+}

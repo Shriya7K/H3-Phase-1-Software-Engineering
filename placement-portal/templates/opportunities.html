@@ -5,22 +5,76 @@
 {% block content %}
 <header class="page-head">
   <div>
-    <p class="eyebrow">Iteration 1</p>
+    <p class="eyebrow">Sprint 1 · Tasks #11 &amp; #12</p>
     <h1>Available opportunities</h1>
-    <p class="muted">Internships and placements currently open for applications.</p>
+    <p class="muted">Search and filter active campus internships and placement drives.</p>
   </div>
   <span class="count-chip">{{ opportunities|length }} open</span>
 </header>
 
+<!-- Search and Filter Form (Task #12 · FR-06) -->
+<section class="card search-filter-box" style="padding: 1.1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="get" action="{{ url_for('opportunities') }}" class="search-form">
+    <div class="search-inputs">
+      <div class="field search-field" style="flex: 2;">
+        <label for="q" class="sr-only">Search</label>
+        <input id="q" name="q" type="text" value="{{ search_query }}"
+               placeholder="Search by role, location, or keyword...">
+      </div>
+
+      <div class="field" style="flex: 1; min-width: 160px;">
+        <label for="location" class="sr-only">Location</label>
+        <select id="location" name="location" class="select-input">
+          <option value="">All Locations</option>
+          {% for loc in locations %}
+            <option value="{{ loc }}" {{ 'selected' if active_location == loc }}>{{ loc }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if active_type and active_type != 'All' %}
+        <input type="hidden" name="type" value="{{ active_type }}">
+      {% endif %}
+
+      <div class="search-buttons">
+        <button class="btn btn-primary" type="submit">Search</button>
+        {% if search_query or active_location or (active_type and active_type != 'All') %}
+          <a class="btn btn-ghost" href="{{ url_for('opportunities') }}" style="color: var(--ink-soft); border-color: var(--line);">Clear</a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</section>
+
+<!-- Type Filter Row -->
 <nav class="filter-row" aria-label="Filter by opportunity type">
   {% set filters = [('All', 'All'), ('Internship', 'Internships'), ('Placement', 'Placements')] %}
   {% for value, label in filters %}
+    {% set query_params = [] %}
+    {% if value != 'All' %}
+      {% set _ = query_params.append('type=' ~ value) %}
+    {% endif %}
+    {% if search_query %}
+      {% set _ = query_params.append('q=' ~ search_query) %}
+    {% endif %}
+    {% if active_location %}
+      {% set _ = query_params.append('location=' ~ active_location) %}
+    {% endif %}
+    {% set query_string = '?' ~ query_params|join('&') if query_params else '' %}
     <a class="filter-pill {{ 'active' if active_type == value }}"
-       href="{{ url_for('opportunities') }}{{ '' if value == 'All' else '?type=' ~ value }}">
+       href="{{ url_for('opportunities') }}{{ query_string }}">
       {{ label }}
     </a>
   {% endfor %}
 </nav>
+
+{% if search_query or active_location %}
+  <p class="search-status" style="margin: -0.5rem 0 1.25rem; font-size: 0.88rem; color: var(--ink-soft);">
+    Showing {{ opportunities|length }} result{{ 's' if opportunities|length != 1 }}
+    {% if search_query %} matching "<strong>{{ search_query }}</strong>"{% endif %}
+    {% if active_location %} in <strong>{{ active_location }}</strong>{% endif %}.
+  </p>
+{% endif %}
 
 {% if opportunities %}
   <div class="job-grid">
@@ -64,7 +118,13 @@
 {% else %}
   <div class="card empty-state">
     <h2>No opportunities to show</h2>
-    <p class="muted">Nothing is open for this filter right now. Check back later.</p>
+    <p class="muted">
+      {% if search_query or active_location %}
+        No listings match your search criteria. Try different keywords or <a href="{{ url_for('opportunities') }}">clear filters</a>.
+      {% else %}
+        Nothing is open for this filter right now. Check back later.
+      {% endif %}
+    </p>
   </div>
 {% endif %}
 {% endblock %}

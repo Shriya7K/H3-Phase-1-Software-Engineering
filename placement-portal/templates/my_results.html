@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}My Test Results{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Task #18 · FR-10</p>
+    <h1>My Aptitude Test History</h1>
+    <p class="muted">Review all completed aptitude test attempts and scorecards.</p>
+  </div>
+  <a class="btn btn-primary btn-small" href="{{ url_for('aptitude_tests') }}">Available Tests</a>
+</header>
+
+{% if attempts %}
+  <div class="job-grid" style="grid-template-columns: 1fr;">
+    {% for att in attempts %}
+      <article class="card job-card" style="gap: 0.75rem;">
+        <div class="job-head">
+          <div>
+            <h2>
+              <a href="{{ url_for('test_attempt_result', test_id=att.test_id, attempt_id=att.id) }}">
+                {{ att.test_name }}
+              </a>
+            </h2>
+            <p class="company">{{ att.category }} · Difficulty: {{ att.difficulty }}</p>
+          </div>
+          <div style="display: flex; gap: 0.6rem; align-items: center;">
+            <span style="font-size: 1.15rem; font-weight: 700;">
+              {{ att.score }} / {{ att.total_questions }} ({{ "%.1f"|format(att.percentage) }}%)
+            </span>
+            <span class="badge badge-status-{{ 'accepted' if att.passed else 'rejected' }}">
+              {{ 'PASSED' if att.passed else 'FAILED' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="job-foot">
+          <span class="muted" style="font-size: 0.8rem;">Attempted on: {{ att.completed_at[:16] }}</span>
+          <div style="display: flex; gap: 0.75rem;">
+            <a class="link-arrow" href="{{ url_for('test_attempt_result', test_id=att.test_id, attempt_id=att.id) }}">
+              View Scorecard &rarr;
+            </a>
+            <a class="link-arrow" href="{{ url_for('take_aptitude_test', test_id=att.test_id) }}" style="color: var(--ink-soft);">
+              Retake
+            </a>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <h2>No test attempts yet</h2>
+    <p class="muted">You have not taken any aptitude assessments yet.</p>
+    <a class="btn btn-primary" href="{{ url_for('aptitude_tests') }}" style="margin-top: 1rem;">Browse Available Tests</a>
+  </div>
+{% endif %}
+{% endblock %}
