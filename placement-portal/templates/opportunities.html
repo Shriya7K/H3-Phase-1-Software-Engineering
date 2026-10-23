@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Opportunities{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Iteration 1</p>
+    <h1>Available opportunities</h1>
+    <p class="muted">Internships and placements currently open for applications.</p>
+  </div>
+  <span class="count-chip">{{ opportunities|length }} open</span>
+</header>
+
+<nav class="filter-row" aria-label="Filter by opportunity type">
+  {% set filters = [('All', 'All'), ('Internship', 'Internships'), ('Placement', 'Placements')] %}
+  {% for value, label in filters %}
+    <a class="filter-pill {{ 'active' if active_type == value }}"
+       href="{{ url_for('opportunities') }}{{ '' if value == 'All' else '?type=' ~ value }}">
+      {{ label }}
+    </a>
+  {% endfor %}
+</nav>
+
+{% if opportunities %}
+  <div class="job-grid">
+    {% for opportunity in opportunities %}
+      <article class="card job-card">
+        <div class="job-head">
+          <div>
+            <h2>
+              <a href="{{ url_for('opportunity_detail', opportunity_id=opportunity.id) }}">
+                {{ opportunity.title }}
+              </a>
+            </h2>
+            <p class="company">{{ opportunity.company }}</p>
+          </div>
+          <span class="badge badge-{{ opportunity.type|lower }}">{{ opportunity.type }}</span>
+        </div>
+
+        <dl class="job-meta">
+          <div>
+            <dt>Location</dt>
+            <dd>{{ opportunity.location }}</dd>
+          </div>
+          <div>
+            <dt>Stipend / CTC</dt>
+            <dd class="money">{{ opportunity.stipend }}</dd>
+          </div>
+        </dl>
+
+        <div class="job-foot">
+          <span class="deadline-chip {{ deadline_css(opportunity.days_left) }}">
+            {{ deadline_label(opportunity.days_left) }}
+          </span>
+          <a class="link-arrow"
+             href="{{ url_for('opportunity_detail', opportunity_id=opportunity.id) }}">
+            View details <span aria-hidden="true">&rarr;</span>
+          </a>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <h2>No opportunities to show</h2>
+    <p class="muted">Nothing is open for this filter right now. Check back later.</p>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}{{ opportunity.title }}{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{{ url_for('opportunities') }}">&larr; Back to opportunities</a>
+
+<div class="detail-layout">
+  <article class="card detail-main">
+    <div class="badge-row">
+      <span class="badge badge-{{ opportunity.type|lower }}">{{ opportunity.type }}</span>
+      {% if not opportunity.is_available %}
+        <span class="badge badge-closed">Applications closed</span>
+      {% endif %}
+    </div>
+
+    <h1>{{ opportunity.title }}</h1>
+    <p class="company company-lg">{{ opportunity.company }}</p>
+
+    <section class="detail-section">
+      <h2>About the role</h2>
+      <p class="prose">{{ opportunity.description }}</p>
+    </section>
+
+    <section class="detail-section">
+      <h2>Eligibility</h2>
+      <p class="prose">{{ opportunity.eligibility }}</p>
+    </section>
+
+    <p class="notice">
+      Applying for opportunities is planned for Iteration 2 and is not part of this build.
+    </p>
+  </article>
+
+  <aside class="card detail-side">
+    <h2>At a glance</h2>
+    <dl class="side-list">
+      <div>
+        <dt>Type</dt>
+        <dd>{{ opportunity.type }}</dd>
+      </div>
+      <div>
+        <dt>Location</dt>
+        <dd>{{ opportunity.location }}</dd>
+      </div>
+      <div>
+        <dt>Stipend / CTC</dt>
+        <dd>{{ opportunity.stipend }}</dd>
+      </div>
+      <div>
+        <dt>Application deadline</dt>
+        <dd>
+          {{ opportunity.deadline|pretty_date }}
+          {% if opportunity.is_available %}
+            <span class="deadline-chip {{ deadline_css(opportunity.days_left) }} d-block">
+              {{ deadline_label(opportunity.days_left) }}
+            </span>
+          {% endif %}
+        </dd>
+      </div>
+    </dl>
+  </aside>
+</div>
+{% endblock %}
