@@ -118,5 +118,4 @@ placement-portal/
 
 Applying to opportunities (#14), preparation progress (#19), question
 management (#20), listing CRUD (#26), and application records (#28) are not part
-of this build. Nothing in the UI pretends otherwise — the detail page states
-that applications arrive in Iteration 2.
+of this build. 
