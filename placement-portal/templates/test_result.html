@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Test Results: {{ test.name }}{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{{ url_for('aptitude_tests') }}">&larr; Back to aptitude tests</a>
+
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Task #18 · FR-10 Scorecard</p>
+    <h1>Test Results</h1>
+    <p class="muted">Performance calculation for {{ test.name }}.</p>
+  </div>
+  <span class="badge badge-status-{{ 'accepted' if attempt.passed else 'rejected' }}" style="font-size: 0.9rem; padding: 0.4rem 0.9rem;">
+    {{ 'PASSED' if attempt.passed else 'NEEDS IMPROVEMENT' }}
+  </span>
+</header>
+
+<div class="detail-layout">
+  <article class="card detail-main">
+    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed var(--line); padding-bottom: 1.25rem;">
+      <div>
+        <h2 style="font-size: 1.3rem;">{{ test.name }}</h2>
+        <p class="company">{{ test.category }} Assessment · {{ attempt.completed_at[:16] }}</p>
+      </div>
+
+      <div style="text-align: right;">
+        <span style="font-size: 2.2rem; font-weight: 800; color: {{ 'var(--green)' if attempt.passed else 'var(--amber)' }};">
+          {{ attempt.score }} / {{ attempt.total_questions }}
+        </span>
+        <p class="muted" style="margin: 0; font-size: 0.85rem;">({{ "%.1f"|format(attempt.percentage) }}%)</p>
+      </div>
+    </div>
+
+    <!-- Question by question review -->
+    <section class="detail-section">
+      <h2>Question Breakdown</h2>
+      <div style="display: grid; gap: 1rem; margin-top: 1rem;">
+        {% for item in breakdown %}
+          <div class="card" style="padding: 1rem 1.25rem; border-left: 4px solid {{ 'var(--green)' if item.is_correct else 'var(--red)' }};">
+            <p style="margin: 0 0 0.5rem; font-weight: 600;">
+              Q{{ loop.index }}. {{ item.question.question_text }}
+            </p>
+            <div style="display: flex; gap: 1.5rem; font-size: 0.85rem; flex-wrap: wrap;">
+              <div>
+                <span class="muted">Your Answer:</span>
+                <strong>Option {{ item.selected_option or 'None' }}</strong>
+                {% if item.is_correct %}
+                  <span style="color: var(--green); margin-left: 0.25rem;">&#10003; Correct</span>
+                {% else %}
+                  <span style="color: var(--red); margin-left: 0.25rem;">&#10007; Incorrect</span>
+                {% endif %}
+              </div>
+              <div>
+                <span class="muted">Correct Answer:</span>
+                <strong>Option {{ item.question.correct_option }}</strong>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <div style="margin-top: 1.75rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <a class="btn btn-primary" href="{{ url_for('take_aptitude_test', test_id=test.id) }}">Retake Test</a>
+      <a class="btn btn-ghost" href="{{ url_for('my_test_results') }}" style="color: var(--ink-soft); border-color: var(--line);">View All Results</a>
+      <a class="btn btn-ghost" href="{{ url_for('aptitude_tests') }}" style="color: var(--ink-soft); border-color: var(--line);">Back to Tests</a>
+    </div>
+  </article>
+
+  <aside class="card detail-side">
+    <h2>Performance Summary</h2>
+    <dl class="side-list">
+      <div>
+        <dt>Score</dt>
+        <dd><strong>{{ attempt.score }}</strong> out of {{ attempt.total_questions }}</dd>
+      </div>
+      <div>
+        <dt>Percentage</dt>
+        <dd><strong>{{ "%.1f"|format(attempt.percentage) }}%</strong></dd>
+      </div>
+      <div>
+        <dt>Pass Threshold</dt>
+        <dd>50.0% ({{ (attempt.total_questions / 2)|round|int }} correct)</dd>
+      </div>
+      <div>
+        <dt>Result</dt>
+        <dd>
+          {% if attempt.passed %}
+            <span style="color: var(--green); font-weight: 700;">PASSED</span>
+          {% else %}
+            <span style="color: var(--red); font-weight: 700;">FAILED</span>
+          {% endif %}
+        </dd>
+      </div>
+      <div>
+        <dt>Completed On</dt>
+        <dd>{{ attempt.completed_at[:10] }}</dd>
+      </div>
+    </dl>
+  </aside>
+</div>
+{% endblock %}

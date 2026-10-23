@@ -7,6 +7,7 @@ the demo always shows a realistic mix of open, closing-soon and expired items.
 from __future__ import annotations
 
 from datetime import date, timedelta
+import json
 from sqlite3 import Connection
 
 from werkzeug.security import generate_password_hash
@@ -170,6 +171,7 @@ OPPORTUNITIES = [
 
 APTITUDE_TESTS = [
     {
+        "id": 1,
         "name": "Quantitative Aptitude",
         "category": "Aptitude",
         "description": (
@@ -182,6 +184,7 @@ APTITUDE_TESTS = [
         "is_active": 1,
     },
     {
+        "id": 2,
         "name": "Logical Reasoning",
         "category": "Reasoning",
         "description": "Number series, blood relations, syllogisms and seating arrangements.",
@@ -191,6 +194,7 @@ APTITUDE_TESTS = [
         "is_active": 1,
     },
     {
+        "id": 3,
         "name": "Verbal Ability",
         "category": "English",
         "description": "Reading comprehension, sentence correction and para jumbles.",
@@ -200,6 +204,7 @@ APTITUDE_TESTS = [
         "is_active": 1,
     },
     {
+        "id": 4,
         "name": "Data Interpretation",
         "category": "Aptitude",
         "description": "Tables, charts and caselets with calculation-heavy questions.",
@@ -209,6 +214,7 @@ APTITUDE_TESTS = [
         "is_active": 1,
     },
     {
+        "id": 5,
         "name": "Programming Fundamentals",
         "category": "Technical",
         "description": "Output prediction, data structures and basic complexity analysis.",
@@ -219,6 +225,7 @@ APTITUDE_TESTS = [
     },
     {
         # Inactive test: should not appear on the student-facing page.
+        "id": 6,
         "name": "Advanced SQL",
         "category": "Technical",
         "description": "Joins, window functions and query optimisation.",
@@ -230,8 +237,152 @@ APTITUDE_TESTS = [
 ]
 
 
+QUESTIONS = [
+    # Test 1: Quantitative Aptitude
+    {
+        "test_id": 1,
+        "question_text": "If a shirt is marked at Rs 800 and sold at a 15% discount, what is the selling price?",
+        "option_a": "Rs 680",
+        "option_b": "Rs 700",
+        "option_c": "Rs 650",
+        "option_d": "Rs 720",
+        "correct_option": "A",
+    },
+    {
+        "test_id": 1,
+        "question_text": "A train 180 metres long is running at 72 km/h. How many seconds will it take to pass a telegraph post?",
+        "option_a": "8 seconds",
+        "option_b": "9 seconds",
+        "option_c": "10 seconds",
+        "option_d": "12 seconds",
+        "correct_option": "B",
+    },
+    {
+        "test_id": 1,
+        "question_text": "A and B can complete a work in 12 days and 24 days respectively. Working together, in how many days can they complete it?",
+        "option_a": "6 days",
+        "option_b": "8 days",
+        "option_c": "10 days",
+        "option_d": "9 days",
+        "correct_option": "B",
+    },
+    {
+        "test_id": 1,
+        "question_text": "The average of five numbers is 27. If one number is excluded, the average becomes 25. The excluded number is:",
+        "option_a": "30",
+        "option_b": "32",
+        "option_c": "35",
+        "option_d": "40",
+        "correct_option": "C",
+    },
+    {
+        "test_id": 1,
+        "question_text": "Two numbers are in the ratio 3 : 5. If their sum is 240, what is the larger number?",
+        "option_a": "120",
+        "option_b": "140",
+        "option_c": "150",
+        "option_d": "160",
+        "correct_option": "C",
+    },
+
+    # Test 2: Logical Reasoning
+    {
+        "test_id": 2,
+        "question_text": "Find the next number in the sequence: 4, 9, 19, 39, 79, ?",
+        "option_a": "159",
+        "option_b": "149",
+        "option_c": "169",
+        "option_d": "158",
+        "correct_option": "A",
+    },
+    {
+        "test_id": 2,
+        "question_text": "Pointing to a photograph, Rohit said, 'She is the daughter of my grandfather's only son.' How is the girl related to Rohit?",
+        "option_a": "Mother",
+        "option_b": "Sister",
+        "option_c": "Aunt",
+        "option_d": "Cousin",
+        "correct_option": "B",
+    },
+    {
+        "test_id": 2,
+        "question_text": "In a certain code, 'PYTHON' is written as 'QZWIPO'. How is 'JAVA' written in that code?",
+        "option_a": "KZWZ",
+        "option_b": "KBWB",
+        "option_c": "KBWC",
+        "option_d": "KCWC",
+        "correct_option": "B",
+    },
+    {
+        "test_id": 2,
+        "question_text": "If South-East becomes North, North-East becomes West and so on, what will West become?",
+        "option_a": "North-East",
+        "option_b": "South-East",
+        "option_c": "South-West",
+        "option_d": "North-West",
+        "correct_option": "B",
+    },
+    {
+        "test_id": 2,
+        "question_text": "Which word does not belong with the others: Apple, Banana, Carrot, Orange?",
+        "option_a": "Apple",
+        "option_b": "Banana",
+        "option_c": "Carrot",
+        "option_d": "Orange",
+        "correct_option": "C",
+    },
+
+    # Test 3: Verbal Ability
+    {
+        "test_id": 3,
+        "question_text": "Choose the word most nearly opposite in meaning to CANDID:",
+        "option_a": "Blunt",
+        "option_b": "Guarded",
+        "option_c": "Sincere",
+        "option_d": "Carefree",
+        "correct_option": "B",
+    },
+    {
+        "test_id": 3,
+        "question_text": "Identify the grammatically correct sentence:",
+        "option_a": "Neither of the students were present.",
+        "option_b": "Neither of the students was present.",
+        "option_c": "Neither of the students have been present.",
+        "option_d": "Neither of students was present.",
+        "correct_option": "B",
+    },
+    {
+        "test_id": 3,
+        "question_text": "Choose the synonym for METICULOUS:",
+        "option_a": "Careless",
+        "option_b": "Painstaking",
+        "option_c": "Hasty",
+        "option_d": "Fragile",
+        "correct_option": "B",
+    },
+    {
+        "test_id": 3,
+        "question_text": "Fill in the blank: The committee _____ divided in their opinions.",
+        "option_a": "was",
+        "option_b": "were",
+        "option_c": "is",
+        "option_d": "has",
+        "correct_option": "B",
+    },
+    {
+        "test_id": 3,
+        "question_text": "Select the correctly spelt word:",
+        "option_a": "Accomodate",
+        "option_b": "Accommodate",
+        "option_c": "Acommodate",
+        "option_d": "Accomadate",
+        "correct_option": "B",
+    },
+]
+
+
 def seed_database(connection: Connection) -> None:
-    """Insert demo users, opportunities and aptitude tests."""
+    """Insert demo users, opportunities, aptitude tests, profiles, applications, and questions."""
     connection.executemany(
         "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
         [
@@ -260,13 +411,64 @@ def seed_database(connection: Connection) -> None:
     connection.executemany(
         """
         INSERT INTO aptitude_tests
-            (name, category, description, num_questions, duration_minutes,
+            (id, name, category, description, num_questions, duration_minutes,
              difficulty, is_active)
         VALUES
-            (:name, :category, :description, :num_questions, :duration_minutes,
+            (:id, :name, :category, :description, :num_questions, :duration_minutes,
              :difficulty, :is_active)
         """,
         APTITUDE_TESTS,
+    )
+
+    # Demo student profile (user_id = 1)
+    connection.execute(
+        """
+        INSERT INTO student_profiles
+            (user_id, usn, phone, department, batch_year, cgpa, skills, bio, github_url, linkedin_url)
+        VALUES
+            (1, 'PES1UG24CS001', '+91 98765 43210', 'Computer Science and Engineering', 2027, 8.85,
+             'Python, Flask, SQL, Data Structures, Git',
+             'Pre-final year CSE student passionate about software engineering, backend systems, and web technologies.',
+             'https://github.com/aditi-sharma',
+             'https://linkedin.com/in/aditi-sharma')
+        """
+    )
+
+    # Demo applications for student (user_id = 1)
+    connection.executemany(
+        """
+        INSERT INTO applications (user_id, opportunity_id, status, notes, applied_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        [
+            (1, 1, "Under Review", "Applied on campus drive day 1.", (date.today() - timedelta(days=2)).isoformat()),
+            (1, 2, "Submitted", "Resume and GitHub portfolio attached.", (date.today() - timedelta(days=1)).isoformat()),
+        ],
+    )
+
+    # Seed aptitude test questions
+    connection.executemany(
+        """
+        INSERT INTO test_questions
+            (test_id, question_text, option_a, option_b, option_c, option_d, correct_option)
+        VALUES
+            (:test_id, :question_text, :option_a, :option_b, :option_c, :option_d, :correct_option)
+        """,
+        QUESTIONS,
+    )
+
+    # Seed one completed test attempt for demo student
+    connection.execute(
+        """
+        INSERT INTO test_attempts
+            (user_id, test_id, score, total_questions, percentage, passed, answers_json, completed_at)
+        VALUES
+            (1, 1, 4, 5, 80.0, 1, ?, ?)
+        """,
+        (
+            json.dumps({"1": "A", "2": "B", "3": "B", "4": "C", "5": "B"}),
+            (date.today() - timedelta(days=1)).isoformat(),
+        ),
     )
 
     connection.commit()

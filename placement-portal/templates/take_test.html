@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Take Test: {{ test.name }}{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{{ url_for('aptitude_tests') }}">&larr; Back to aptitude tests</a>
+
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Task #18 · FR-09 &amp; FR-10</p>
+    <h1>{{ test.name }}</h1>
+    <p class="muted">{{ test.description }}</p>
+  </div>
+  <div style="display: flex; gap: 0.5rem; align-items: center;">
+    <span class="badge badge-category">{{ test.category }}</span>
+    <span class="difficulty difficulty-{{ test.difficulty|lower }}">{{ test.difficulty }}</span>
+  </div>
+</header>
+
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.5rem; background: var(--brand-soft); border-color: #cbdcf7;">
+  <p style="margin: 0; font-size: 0.88rem; color: var(--brand-dark);">
+    <strong>Test Instructions:</strong> Choose the single best answer for each question.
+    Click <strong>Submit Test</strong> at the bottom when completed to calculate your score.
+  </p>
+</div>
+
+{% if questions %}
+  <form class="form" method="post" action="{{ url_for('submit_aptitude_test', test_id=test.id) }}">
+    <div style="display: grid; gap: 1.25rem;">
+      {% for q in questions %}
+        <article class="card" style="padding: 1.3rem 1.4rem;">
+          <h2 style="font-size: 1.05rem; margin-bottom: 0.85rem; line-height: 1.4;">
+            <span style="color: var(--brand); font-weight: 700; margin-right: 0.35rem;">Q{{ loop.index }}.</span>
+            {{ q.question_text }}
+          </h2>
+
+          <div style="display: grid; gap: 0.6rem; margin-top: 0.75rem;">
+            <label class="option-label">
+              <input type="radio" name="question_{{ q.id }}" value="A" required>
+              <span class="option-tag">A</span>
+              <span class="option-text">{{ q.option_a }}</span>
+            </label>
+
+            <label class="option-label">
+              <input type="radio" name="question_{{ q.id }}" value="B">
+              <span class="option-tag">B</span>
+              <span class="option-text">{{ q.option_b }}</span>
+            </label>
+
+            <label class="option-label">
+              <input type="radio" name="question_{{ q.id }}" value="C">
+              <span class="option-tag">C</span>
+              <span class="option-text">{{ q.option_c }}</span>
+            </label>
+
+            <label class="option-label">
+              <input type="radio" name="question_{{ q.id }}" value="D">
+              <span class="option-tag">D</span>
+              <span class="option-text">{{ q.option_d }}</span>
+            </label>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+
+    <div style="margin-top: 1.5rem; display: flex; gap: 1rem; align-items: center;">
+      <button class="btn btn-primary" type="submit">Submit Test &amp; Calculate Results</button>
+      <a class="btn btn-ghost" href="{{ url_for('aptitude_tests') }}" style="color: var(--ink-soft); border-color: var(--line);">Cancel</a>
+    </div>
+  </form>
+{% else %}
+  <div class="card empty-state">
+    <h2>Questions not published yet</h2>
+    <p class="muted">Questions for this assessment are being prepared. Please check back later.</p>
+    <a class="btn btn-primary" href="{{ url_for('aptitude_tests') }}" style="margin-top: 1rem;">Back to Aptitude Tests</a>
+  </div>
+{% endif %}
+{% endblock %}

@@ -5,11 +5,14 @@
 {% block content %}
 <header class="page-head">
   <div>
-    <p class="eyebrow">Iteration 1</p>
+    <p class="eyebrow">Sprint 1 · Tasks #16 &amp; #18</p>
     <h1>Aptitude tests</h1>
     <p class="muted">Practice tests available to you right now.</p>
   </div>
-  <span class="count-chip">{{ tests|length }} available</span>
+  <div style="display: flex; gap: 0.75rem; align-items: center;">
+    <span class="count-chip">{{ tests|length }} available</span>
+    <a class="btn btn-ghost btn-small" href="{{ url_for('my_test_results') }}" style="color: var(--ink-soft); border-color: var(--line);">My Results</a>
+  </div>
 </header>
 
 {% if tests %}
@@ -32,6 +35,12 @@
             <span>minutes</span>
           </li>
         </ul>
+        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--line); display: flex; justify-content: space-between; align-items: center;">
+          <a class="btn btn-primary btn-small" href="{{ url_for('take_aptitude_test', test_id=test.id) }}">
+            Start Test
+          </a>
+          <span class="muted" style="font-size: 0.75rem;">Timed quiz</span>
+        </div>
       </article>
     {% endfor %}
   </div>
