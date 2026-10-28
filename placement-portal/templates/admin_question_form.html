@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'New question' if mode == 'new' else 'Edit question' }}{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{{ url_for('admin_test_questions', test_id=test['id']) }}">
+  &larr; Back to {{ test['name'] }}
+</a>
+
+{% include "_admin_nav.html" %}
+
+<div class="card section-card form-card">
+  <h1>{{ 'Add question' if mode == 'new' else 'Edit question' }}</h1>
+  <p class="muted small">{{ test['name'] }}</p>
+
+  <form class="form" method="post"
+        action="{% if mode == 'new' %}{{ url_for('admin_question_new', test_id=test['id']) }}{% else %}{{ url_for('admin_question_edit', question_id=question['id']) }}{% endif %}">
+    <div class="field">
+      <label for="question_text">Question text *</label>
+      <textarea id="question_text" name="question_text" rows="2" required>{{ question['question_text'] or '' }}</textarea>
+    </div>
+
+    <div class="form-grid">
+      {% for letter in ['a', 'b', 'c', 'd'] %}
+        <div class="field">
+          <label for="option_{{ letter }}">Option {{ letter|upper }} *</label>
+          <input id="option_{{ letter }}" name="option_{{ letter }}"
+                 value="{{ question['option_' ~ letter] or '' }}" required>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="field">
+      <label for="correct_option">Correct option *</label>
+      <select id="correct_option" name="correct_option" class="select-input">
+        {% for letter in ['A', 'B', 'C', 'D'] %}
+          <option value="{{ letter }}"
+                  {{ 'selected' if question['correct_option']|upper == letter }}>
+            {{ letter }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">
+        {{ 'Add question' if mode == 'new' else 'Save changes' }}
+      </button>
+      <a class="btn btn-ghost dark-ghost"
+         href="{{ url_for('admin_test_questions', test_id=test['id']) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'New listing' if mode == 'new' else 'Edit listing' }}{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{{ url_for('admin_opportunities') }}">&larr; Back to listings</a>
+
+{% include "_admin_nav.html" %}
+
+<div class="card section-card form-card">
+  <h1>{{ 'New opportunity' if mode == 'new' else 'Edit opportunity' }}</h1>
+  <p class="muted small">Fields marked with an asterisk are required.</p>
+
+  <form class="form" method="post"
+        action="{% if mode == 'new' %}{{ url_for('admin_opportunity_new') }}{% else %}{{ url_for('admin_opportunity_edit', opportunity_id=opportunity['id']) }}{% endif %}">
+    <div class="form-grid">
+      <div class="field">
+        <label for="title">Title *</label>
+        <input id="title" name="title" value="{{ opportunity['title'] or '' }}" required>
+      </div>
+      <div class="field">
+        <label for="company">Company *</label>
+        <input id="company" name="company" value="{{ opportunity['company'] or '' }}" required>
+      </div>
+      <div class="field">
+        <label for="type">Type *</label>
+        <select id="type" name="type" class="select-input">
+          {% for option in ['Internship', 'Placement'] %}
+            <option value="{{ option }}" {{ 'selected' if opportunity['type'] == option }}>
+              {{ option }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="location">Location *</label>
+        <input id="location" name="location" value="{{ opportunity['location'] or '' }}" required>
+      </div>
+      <div class="field">
+        <label for="stipend">Stipend / CTC *</label>
+        <input id="stipend" name="stipend" value="{{ opportunity['stipend'] or '' }}"
+               placeholder="e.g. Rs 25,000/month or Rs 7.0 LPA" required>
+      </div>
+      <div class="field">
+        <label for="deadline">Application deadline *</label>
+        <input id="deadline" name="deadline" type="date"
+               value="{{ opportunity['deadline'] or '' }}" required>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="description">Description *</label>
+      <textarea id="description" name="description" rows="4" required>{{ opportunity['description'] or '' }}</textarea>
+    </div>
+
+    <div class="field">
+      <label for="eligibility">Eligibility *</label>
+      <textarea id="eligibility" name="eligibility" rows="2" required>{{ opportunity['eligibility'] or '' }}</textarea>
+    </div>
+
+    <label class="checkbox-row">
+      <input type="checkbox" name="is_open" value="1" {{ 'checked' if opportunity['is_open'] }}>
+      <span>Accepting applications (uncheck to hide from students)</span>
+    </label>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">
+        {{ 'Create listing' if mode == 'new' else 'Save changes' }}
+      </button>
+      <a class="btn btn-ghost dark-ghost" href="{{ url_for('admin_opportunities') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -29,10 +29,20 @@
              class="{{ 'active' if request.endpoint in ('aptitude_tests', 'take_aptitude_test', 'test_attempt_result', 'my_test_results') }}">
             Aptitude Tests
           </a>
+          <a href="{{ url_for('progress') }}"
+             class="{{ 'active' if request.endpoint == 'progress' }}">
+            Progress
+          </a>
           <a href="{{ url_for('profile') }}"
              class="{{ 'active' if request.endpoint == 'profile' }}">
             Profile
           </a>
+          {% if session.get('user_role') == 'admin' %}
+            <a href="{{ url_for('admin_opportunities') }}"
+               class="nav-admin {{ 'active' if request.endpoint and request.endpoint.startswith('admin_') }}">
+              Admin
+            </a>
+          {% endif %}
         </nav>
 
         <div class="user-box">

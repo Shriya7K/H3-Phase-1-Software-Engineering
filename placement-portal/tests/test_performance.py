@@ -68,6 +68,32 @@ def _seed_bulk_data(database_path: str) -> None:
     db.close()
 
 
+def _seed_more_rows(database_path: str, count: int) -> None:
+    today = date.today()
+    db = sqlite3.connect(database_path)
+    db.executemany(
+        "INSERT INTO opportunities (title, company, type, location, stipend, "
+        "description, eligibility, deadline, is_open) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            (
+                f"Extra Role {index}",
+                "Company X",
+                "Internship",
+                "Remote",
+                "Rs 1",
+                "d",
+                "e",
+                (today + timedelta(days=(index % 60) + 1)).isoformat(),
+                1,
+            )
+            for index in range(count)
+        ],
+    )
+    db.commit()
+    db.close()
+
+
 def _timed_get(client, path, repeats=5):
     durations = []
     response = None
@@ -120,44 +146,39 @@ def test_listing_query_uses_index(app, client):
     assert "scan opportunities" not in plan_text
 
 
-def test_page_generation_is_linear_not_quadratic(loaded_client):
-    """Doubling the dataset must not multiply render time by ~4 (N+1 guard)."""
-    small, small_times = _timed_get(loaded_client, "/opportunities", repeats=7)
-    assert small.status_code == 200
-    small_median = statistics.median(small_times)
+def test_listing_query_count_does_not_grow_with_dataset(app, client, monkeypatch):
+    """N+1 guard: the listing costs the same number of queries at 2x the rows.
 
-    db = sqlite3.connect(loaded_client.application.config["DATABASE"])
-    today = date.today()
-    db.executemany(
-        "INSERT INTO opportunities (title, company, type, location, stipend, "
-        "description, eligibility, deadline, is_open) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-            (
-                f"Extra Role {index}",
-                "Company X",
-                "Internship",
-                "Remote",
-                "Rs 1",
-                "d",
-                "e",
-                (today + timedelta(days=(index % 60) + 1)).isoformat(),
-                1,
-            )
-            for index in range(OPPORTUNITY_ROWS)
-        ],
-    )
-    db.commit()
-    db.close()
+    Counting statements is deterministic, unlike comparing two sub-10ms
+    timings, so this cannot go flaky on a loaded CI machine.
+    """
+    import sqlite3 as sqlite_module
 
-    large, large_times = _timed_get(loaded_client, "/opportunities", repeats=7)
-    assert large.status_code == 200
-    large_median = statistics.median(large_times)
+    statements: list[str] = []
+    real_connect = sqlite_module.connect
 
-    # SQLite is fast enough that both medians stay well under the target even
-    # as the dataset doubles; the hard cap catches N+1 style regressions.
-    assert large_median < MAX_MEDIAN_SECONDS
-    assert large_median < (small_median * 8) + 0.05
+    def counting_connect(*args, **kwargs):
+        connection = real_connect(*args, **kwargs)
+        connection.set_trace_callback(statements.append)
+        return connection
+
+    monkeypatch.setattr(sqlite_module, "connect", counting_connect)
+
+    client.post("/login", data={"email": "student@campus.edu", "password": "student123"})
+
+    def query_count() -> int:
+        statements.clear()
+        assert client.get("/opportunities").status_code == 200
+        return sum(
+            1 for sql in statements if sql.strip().upper().startswith("SELECT")
+        )
+
+    small = query_count()
+    _seed_more_rows(app.config["DATABASE"], OPPORTUNITY_ROWS)
+    large = query_count()
+
+    assert small == large, f"query count grew with the dataset: {small} -> {large}"
+    assert small <= 5, f"listing issues {small} queries; expected a constant handful"
 
 
 def test_login_performance(loaded_client):

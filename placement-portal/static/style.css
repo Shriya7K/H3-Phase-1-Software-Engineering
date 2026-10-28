@@ -554,3 +554,205 @@ h2 { font-size: 1.05rem; }
   font-size: 0.92rem;
   color: var(--ink);
 }
+
+/* ==========================================================================
+   Iteration 2: progress dashboard + admin screens
+   ========================================================================== */
+
+.small { font-size: 0.82rem; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.right { text-align: right; }
+
+/* -- Nav: admin entry point -- */
+.nav-admin {
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+  padding-left: 0.9rem !important;
+  margin-left: 0.35rem;
+  color: #ffd9a3 !important;
+}
+.nav-admin:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* -- Shared card variants -- */
+.section-card { padding: 1.35rem 1.5rem; margin-bottom: 1rem; }
+.section-card h2 {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+.table-card { padding: 0.35rem 0.35rem 0.35rem; overflow-x: auto; }
+.form-card { max-width: 860px; }
+.two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+/* -- Stat cards -- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.stat-card { padding: 1rem 1.1rem; display: grid; gap: 0.2rem; }
+.stat-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.stat-value { font-size: 1.5rem; line-height: 1.1; letter-spacing: -0.01em; }
+
+/* -- Data tables -- */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.data-table th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.data-table th.num { text-align: right; }
+.data-table td {
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: #fafbfd; }
+.data-table td.num { text-align: right; }
+.data-table td ul { margin: 0; }
+
+/* -- Meters -- */
+.meter-cell { width: 120px; }
+.meter {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: #eef1f5;
+  overflow: hidden;
+}
+.meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2f7bf0, #1a4fa0);
+}
+
+/* -- Pills -- */
+.pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pill-pass { background: var(--green-soft); color: var(--green); }
+.pill-fail { background: var(--red-soft); color: var(--red); }
+.pill-closed { background: #eef1f5; color: var(--ink-soft); }
+
+/* -- Status list (progress page) -- */
+.status-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.status-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed var(--line);
+}
+.status-list li:last-child { border-bottom: none; padding-bottom: 0; }
+
+/* -- Question options -- */
+.option-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0;
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.83rem;
+  color: var(--ink-soft);
+}
+.option-list .is-correct { color: var(--green); font-weight: 600; }
+
+/* -- Admin tabs -- */
+.admin-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+}
+.admin-tabs a {
+  padding: 0.55rem 0.85rem;
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.admin-tabs a:hover { color: var(--brand); text-decoration: none; }
+.admin-tabs a.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+/* -- Forms -- */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.field textarea {
+  width: 100%;
+  padding: 0.62rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--ink);
+  background: #fbfcfe;
+  resize: vertical;
+}
+.field textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(31, 95, 191, 0.14);
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+.checkbox-row input { width: 16px; height: 16px; }
+.form-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.35rem; }
+.inline-form { display: flex; gap: 0.4rem; align-items: center; }
+.select-small { padding: 0.35rem 0.5rem; font-size: 0.82rem; }
+.row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+.row-actions form { display: inline; }
+
+/* Ghost buttons on a light background need dark outlines */
+.dark-ghost {
+  border-color: var(--line);
+  color: var(--ink-soft);
+  background: var(--surface);
+}
+.dark-ghost:hover { background: #f4f6fa; color: var(--ink); }
+.danger-ghost { border-color: #f5d2ce; color: var(--red); background: var(--surface); }
+.danger-ghost:hover { background: var(--red-soft); }
+
+@media (max-width: 860px) {
+  .two-col { grid-template-columns: 1fr; }
+}

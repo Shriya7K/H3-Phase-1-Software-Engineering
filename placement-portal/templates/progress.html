@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Preparation progress{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Iteration 2</p>
+    <h1>Preparation progress</h1>
+    <p class="muted">How your aptitude practice and applications are going.</p>
+  </div>
+  <a class="btn btn-primary btn-small" href="{{ url_for('aptitude_tests') }}">Take a test</a>
+</header>
+
+<div class="stat-grid">
+  <div class="card stat-card">
+    <span class="stat-label">Tests attempted</span>
+    <strong class="stat-value">{{ summary['attempts'] }}</strong>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Average score</span>
+    <strong class="stat-value">{{ '%.1f'|format(summary['avg_pct']) }}%</strong>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Best score</span>
+    <strong class="stat-value">{{ '%.1f'|format(summary['best_pct']) }}%</strong>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Tests passed</span>
+    <strong class="stat-value">{{ summary['passed'] }}</strong>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Applications</span>
+    <strong class="stat-value">{{ application_total }}</strong>
+  </div>
+</div>
+
+{% if by_test %}
+  <section class="card section-card">
+    <h2>Progress by category</h2>
+    <p class="muted small">Average across every attempt of each test.</p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Category</th>
+          <th class="num">Attempts</th>
+          <th class="num">Average</th>
+          <th class="num">Best</th>
+          <th>Level</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in by_test %}
+          <tr>
+            <td>
+              <a href="{{ url_for('take_aptitude_test', test_id=row['test_id']) }}">{{ row['name'] }}</a>
+            </td>
+            <td>{{ row['category'] }}</td>
+            <td class="num">{{ row['attempts'] }}</td>
+            <td class="num">{{ '%.1f'|format(row['avg_pct']) }}%</td>
+            <td class="num">{{ '%.1f'|format(row['best_pct']) }}%</td>
+            <td class="meter-cell">
+              <span class="meter"><span class="meter-fill" style="width: {{ row['avg_pct']|round(0, 'floor') }}%"></span></span>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% else %}
+  <div class="card empty-state">
+    <h2>No practice attempts yet</h2>
+    <p class="muted">Take an aptitude test and your scores will show up here.</p>
+    <a class="btn btn-primary" href="{{ url_for('aptitude_tests') }}">Browse aptitude tests</a>
+  </div>
+{% endif %}
+
+<div class="two-col">
+  <section class="card section-card">
+    <h2>Recent attempts</h2>
+    {% if recent %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Test</th>
+            <th class="num">Score</th>
+            <th>Result</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for attempt in recent %}
+            <tr>
+              <td>{{ attempt['test_name'] }}</td>
+              <td class="num">{{ attempt['score'] }}/{{ attempt['total_questions'] }}
+                ({{ '%.0f'|format(attempt['percentage']) }}%)</td>
+              <td>
+                <span class="pill {{ 'pill-pass' if attempt['passed'] else 'pill-fail' }}">
+                  {{ 'Passed' if attempt['passed'] else 'Failed' }}
+                </span>
+              </td>
+              <td class="muted small">{{ attempt['completed_at'][:10] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted small">
+        <a href="{{ url_for('my_test_results') }}">See every result</a>
+      </p>
+    {% else %}
+      <p class="muted">Nothing here yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="card section-card">
+    <h2>Applications by status</h2>
+    {% if status_counts %}
+      <ul class="status-list">
+        {% for row in status_counts %}
+          <li>
+            <span class="badge badge-status-{{ row['status']|lower|replace(' ', '-') }}">
+              {{ row['status'] }}
+            </span>
+            <strong>{{ row['c'] }}</strong>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="muted small">
+        <a href="{{ url_for('applications') }}">Manage my applications</a>
+      </p>
+    {% else %}
+      <p class="muted">No applications yet.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -135,6 +135,20 @@ def create_app(test_config: dict | None = None) -> Flask:
 
         return wrapped_view
 
+    def admin_required(view):
+        """Admin/recruiter pages: students get a 403, anonymous users log in."""
+
+        @wraps(view)
+        def wrapped_view(*args, **kwargs):
+            if not session.get("user_id"):
+                next_url = request.full_path if request.query_string else request.path
+                return redirect(url_for("login", next=next_url))
+            if session.get("user_role") != "admin":
+                abort(403)
+            return view(*args, **kwargs)
+
+        return wrapped_view
+
     # -- Home ----------------------------------------------------------------
 
     @app.get("/")
@@ -714,6 +728,401 @@ def create_app(test_config: dict | None = None) -> Flask:
         ).fetchall()
         return render_template("my_results.html", attempts=attempts)
 
+    # -- #19 Track preparation progress (FR-11) ------------------------------
+
+    @app.get("/progress")
+    @login_required
+    def progress():
+        db = get_db()
+        user_id = session["user_id"]
+
+        summary = db.execute(
+            """
+            SELECT COUNT(*) AS attempts,
+                   COALESCE(AVG(percentage), 0) AS avg_pct,
+                   COALESCE(MAX(percentage), 0) AS best_pct,
+                   COALESCE(SUM(passed), 0)    AS passed
+            FROM test_attempts WHERE user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+
+        application_total = db.execute(
+            "SELECT COUNT(*) AS c FROM applications WHERE user_id = ?", (user_id,)
+        ).fetchone()["c"]
+
+        by_test = db.execute(
+            """
+            SELECT t.id AS test_id, t.name, t.category,
+                   COUNT(*) AS attempts,
+                   AVG(ta.percentage) AS avg_pct,
+                   MAX(ta.percentage) AS best_pct
+            FROM test_attempts ta
+            JOIN aptitude_tests t ON ta.test_id = t.id
+            WHERE ta.user_id = ?
+            GROUP BY t.id
+            ORDER BY t.category ASC, t.name ASC
+            """,
+            (user_id,),
+        ).fetchall()
+
+        recent = db.execute(
+            """
+            SELECT ta.id, ta.score, ta.total_questions, ta.percentage, ta.passed,
+                   ta.completed_at, t.name AS test_name, t.id AS test_id
+            FROM test_attempts ta
+            JOIN aptitude_tests t ON ta.test_id = t.id
+            WHERE ta.user_id = ?
+            ORDER BY ta.completed_at DESC, ta.id DESC
+            LIMIT 10
+            """,
+            (user_id,),
+        ).fetchall()
+
+        status_counts = db.execute(
+            "SELECT status, COUNT(*) AS c FROM applications WHERE user_id = ? "
+            "GROUP BY status ORDER BY c DESC",
+            (user_id,),
+        ).fetchall()
+
+        return render_template(
+            "progress.html",
+            summary=summary,
+            application_total=application_total,
+            by_test=by_test,
+            recent=recent,
+            status_counts=status_counts,
+        )
+
+    # -- #26 Create and update opportunity listings (FR-13) ------------------
+
+    def _opportunity_form_values(form):
+        """Read the listing form and validate it. Returns (values, errors)."""
+        values = {
+            "title": (form.get("title") or "").strip(),
+            "company": (form.get("company") or "").strip(),
+            "type": (form.get("type") or "").strip(),
+            "location": (form.get("location") or "").strip(),
+            "stipend": (form.get("stipend") or "").strip(),
+            "description": (form.get("description") or "").strip(),
+            "eligibility": (form.get("eligibility") or "").strip(),
+            "deadline": (form.get("deadline") or "").strip(),
+            "is_open": 1 if form.get("is_open") else 0,
+        }
+        errors = [
+            f"{label} is required."
+            for field, label in (
+                ("title", "Title"),
+                ("company", "Company"),
+                ("location", "Location"),
+                ("stipend", "Stipend / CTC"),
+                ("description", "Description"),
+                ("eligibility", "Eligibility"),
+                ("deadline", "Deadline"),
+            )
+            if not values[field]
+        ]
+        if values["type"] not in ("Internship", "Placement"):
+            errors.append("Type must be Internship or Placement.")
+        if values["deadline"]:
+            try:
+                datetime.strptime(values["deadline"], "%Y-%m-%d")
+            except ValueError:
+                errors.append("Deadline must be a valid date (YYYY-MM-DD).")
+        return values, errors
+
+    @app.get("/admin/opportunities")
+    @admin_required
+    def admin_opportunities():
+        rows = get_db().execute(
+            "SELECT id, title, company, type, location, deadline, is_open "
+            "FROM opportunities "
+            "ORDER BY is_open DESC, deadline ASC, id ASC"
+        ).fetchall()
+        today = date.today().isoformat()
+        items = [
+            dict(row) | {"is_expired": row["deadline"] < today} for row in rows
+        ]
+        return render_template("admin_opportunities.html", opportunities=items)
+
+    @app.route("/admin/opportunities/new", methods=["GET", "POST"])
+    @admin_required
+    def admin_opportunity_new():
+        if request.method == "POST":
+            values, errors = _opportunity_form_values(request.form)
+            if not errors:
+                db = get_db()
+                db.execute(
+                    "INSERT INTO opportunities (title, company, type, location, stipend, "
+                    "description, eligibility, deadline, is_open) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        values["title"], values["company"], values["type"],
+                        values["location"], values["stipend"], values["description"],
+                        values["eligibility"], values["deadline"], values["is_open"],
+                    ),
+                )
+                db.commit()
+                flash(f"Listing '{values['title']}' created.", "success")
+                return redirect(url_for("admin_opportunities"))
+            for error in errors:
+                flash(error, "error")
+            return render_template(
+                "admin_opportunity_form.html", opportunity=values, mode="new"
+            ), 400
+
+        return render_template(
+            "admin_opportunity_form.html",
+            opportunity={"type": "Internship", "is_open": 1},
+            mode="new",
+        )
+
+    @app.route("/admin/opportunities/<int:opportunity_id>/edit", methods=["GET", "POST"])
+    @admin_required
+    def admin_opportunity_edit(opportunity_id: int):
+        db = get_db()
+        row = db.execute(
+            "SELECT id, title, company, type, location, stipend, description, "
+            "eligibility, deadline, is_open FROM opportunities WHERE id = ?",
+            (opportunity_id,),
+        ).fetchone()
+        if row is None:
+            abort(404)
+
+        if request.method == "POST":
+            values, errors = _opportunity_form_values(request.form)
+            if not errors:
+                db.execute(
+                    "UPDATE opportunities SET title = ?, company = ?, type = ?, "
+                    "location = ?, stipend = ?, description = ?, eligibility = ?, "
+                    "deadline = ?, is_open = ? WHERE id = ?",
+                    (
+                        values["title"], values["company"], values["type"],
+                        values["location"], values["stipend"], values["description"],
+                        values["eligibility"], values["deadline"], values["is_open"],
+                        opportunity_id,
+                    ),
+                )
+                db.commit()
+                flash(f"Listing '{values['title']}' updated.", "success")
+                return redirect(url_for("admin_opportunities"))
+            for error in errors:
+                flash(error, "error")
+            values["id"] = opportunity_id
+            return render_template(
+                "admin_opportunity_form.html", opportunity=values, mode="edit"
+            ), 400
+
+        return render_template(
+            "admin_opportunity_form.html", opportunity=dict(row), mode="edit"
+        )
+
+    # -- #20 Manage test questions (FR-14) ----------------------------------
+
+    def _question_form_values(form):
+        """Read the question form and validate it. Returns (values, errors)."""
+        values = {
+            field: (form.get(field) or "").strip()
+            for field in (
+                "question_text", "option_a", "option_b",
+                "option_c", "option_d", "correct_option",
+            )
+        }
+        values["correct_option"] = values["correct_option"].upper()
+        errors = [
+            f"{label} is required."
+            for field, label in (
+                ("question_text", "Question text"),
+                ("option_a", "Option A"),
+                ("option_b", "Option B"),
+                ("option_c", "Option C"),
+                ("option_d", "Option D"),
+            )
+            if not values[field]
+        ]
+        if values["correct_option"] not in ("A", "B", "C", "D"):
+            errors.append("Correct option must be A, B, C or D.")
+        return values, errors
+
+    @app.get("/admin/questions")
+    @admin_required
+    def admin_questions_picker():
+        """Pick a test before managing its question bank."""
+        tests = get_db().execute(
+            "SELECT t.id, t.name, t.category, t.difficulty, "
+            "       COUNT(q.id) AS question_count "
+            "FROM aptitude_tests t "
+            "LEFT JOIN test_questions q ON q.test_id = t.id "
+            "GROUP BY t.id "
+            "ORDER BY t.category ASC, t.name ASC"
+        ).fetchall()
+        return render_template("admin_questions_picker.html", tests=tests)
+
+    @app.get("/admin/tests/<int:test_id>/questions")
+    @admin_required
+    def admin_test_questions(test_id: int):
+        db = get_db()
+        test = db.execute(
+            "SELECT id, name, category, num_questions FROM aptitude_tests WHERE id = ?",
+            (test_id,),
+        ).fetchone()
+        if test is None:
+            abort(404)
+        questions = db.execute(
+            "SELECT id, test_id, question_text, option_a, option_b, option_c, "
+            "option_d, correct_option FROM test_questions WHERE test_id = ? ORDER BY id",
+            (test_id,),
+        ).fetchall()
+        return render_template(
+            "admin_questions.html",
+            test=test,
+            questions=questions,
+            tests=db.execute(
+                "SELECT id, name FROM aptitude_tests ORDER BY name"
+            ).fetchall(),
+        )
+
+    @app.route("/admin/tests/<int:test_id>/questions/new", methods=["GET", "POST"])
+    @admin_required
+    def admin_question_new(test_id: int):
+        db = get_db()
+        test = db.execute(
+            "SELECT id, name FROM aptitude_tests WHERE id = ?", (test_id,)
+        ).fetchone()
+        if test is None:
+            abort(404)
+
+        if request.method == "POST":
+            values, errors = _question_form_values(request.form)
+            if not errors:
+                db.execute(
+                    "INSERT INTO test_questions (test_id, question_text, option_a, "
+                    "option_b, option_c, option_d, correct_option) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        test_id, values["question_text"], values["option_a"],
+                        values["option_b"], values["option_c"], values["option_d"],
+                        values["correct_option"],
+                    ),
+                )
+                db.commit()
+                flash("Question added.", "success")
+                return redirect(url_for("admin_test_questions", test_id=test_id))
+            for error in errors:
+                flash(error, "error")
+            return render_template(
+                "admin_question_form.html", test=test, question=values, mode="new"
+            ), 400
+
+        return render_template(
+            "admin_question_form.html",
+            test=test,
+            question={"correct_option": "A"},
+            mode="new",
+        )
+
+    @app.route("/admin/questions/<int:question_id>/edit", methods=["GET", "POST"])
+    @admin_required
+    def admin_question_edit(question_id: int):
+        db = get_db()
+        row = db.execute(
+            "SELECT id, test_id, question_text, option_a, option_b, option_c, "
+            "option_d, correct_option FROM test_questions WHERE id = ?",
+            (question_id,),
+        ).fetchone()
+        if row is None:
+            abort(404)
+        test = db.execute(
+            "SELECT id, name FROM aptitude_tests WHERE id = ?", (row["test_id"],)
+        ).fetchone()
+
+        if request.method == "POST":
+            values, errors = _question_form_values(request.form)
+            if not errors:
+                db.execute(
+                    "UPDATE test_questions SET question_text = ?, option_a = ?, "
+                    "option_b = ?, option_c = ?, option_d = ?, correct_option = ? "
+                    "WHERE id = ?",
+                    (
+                        values["question_text"], values["option_a"], values["option_b"],
+                        values["option_c"], values["option_d"], values["correct_option"],
+                        question_id,
+                    ),
+                )
+                db.commit()
+                flash("Question updated.", "success")
+                return redirect(url_for("admin_test_questions", test_id=row["test_id"]))
+            for error in errors:
+                flash(error, "error")
+            values["id"] = question_id
+            return render_template(
+                "admin_question_form.html", test=test, question=values, mode="edit"
+            ), 400
+
+        return render_template(
+            "admin_question_form.html", test=test, question=dict(row), mode="edit"
+        )
+
+    @app.post("/admin/questions/<int:question_id>/delete")
+    @admin_required
+    def admin_question_delete(question_id: int):
+        db = get_db()
+        row = db.execute(
+            "SELECT id, test_id FROM test_questions WHERE id = ?", (question_id,)
+        ).fetchone()
+        if row is None:
+            abort(404)
+        db.execute("DELETE FROM test_questions WHERE id = ?", (question_id,))
+        db.commit()
+        flash("Question deleted.", "success")
+        return redirect(url_for("admin_test_questions", test_id=row["test_id"]))
+
+    # -- #28 Manage application records (FR-16) -----------------------------
+
+    APPLICATION_STATUSES = (
+        "Submitted", "Under Review", "Shortlisted", "Accepted", "Rejected",
+    )
+
+    @app.get("/admin/applications")
+    @admin_required
+    def admin_applications():
+        db = get_db()
+
+        status_filter = (request.args.get("status") or "").strip()
+        if status_filter not in APPLICATION_STATUSES:
+            status_filter = ""
+
+        sql = (
+            "SELECT a.id, a.status, a.notes, a.applied_at, a.updated_at, "
+            "       u.name AS student_name, u.email AS student_email, "
+            "       o.id AS opportunity_id, o.title, o.company, o.type "
+            "FROM applications a "
+            "JOIN users u ON a.user_id = u.id "
+            "JOIN opportunities o ON a.opportunity_id = o.id "
+        )
+        params: list[str] = []
+        if status_filter:
+            sql += "WHERE a.status = ? "
+            params.append(status_filter)
+        sql += "ORDER BY a.applied_at DESC, a.id DESC"
+
+        rows = db.execute(sql, params).fetchall()
+
+        counts = {status: 0 for status in APPLICATION_STATUSES}
+        for row in db.execute(
+            "SELECT status, COUNT(*) AS c FROM applications GROUP BY status"
+        ).fetchall():
+            counts[row["status"]] = row["c"]
+
+        return render_template(
+            "admin_applications.html",
+            applications=rows,
+            statuses=APPLICATION_STATUSES,
+            active_status=status_filter,
+            counts=counts,
+            total=sum(counts.values()),
+        )
+
     # -- Errors & maintenance commands --------------------------------------
 
     @app.errorhandler(404)
@@ -722,7 +1131,7 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.errorhandler(403)
     def forbidden(error):
-        return render_template("404.html"), 403
+        return render_template("403.html"), 403
 
     @app.cli.command("reset-db")
     def reset_db_command():

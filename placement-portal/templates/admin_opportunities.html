@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Manage listings{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Admin</p>
+    <h1>Opportunity listings</h1>
+    <p class="muted">Create and update what students see. {{ opportunities|length }} total.</p>
+  </div>
+  <a class="btn btn-primary btn-small" href="{{ url_for('admin_opportunity_new') }}">+ New listing</a>
+</header>
+
+{% include "_admin_nav.html" %}
+
+{% if opportunities %}
+  <div class="card table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Company</th>
+          <th>Type</th>
+          <th>Deadline</th>
+          <th>Visibility</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for opportunity in opportunities %}
+          <tr>
+            <td><strong>{{ opportunity['title'] }}</strong></td>
+            <td>{{ opportunity['company'] }}</td>
+            <td>
+              <span class="badge badge-{{ opportunity['type']|lower }}">{{ opportunity['type'] }}</span>
+            </td>
+            <td>{{ opportunity['deadline']|pretty_date }}</td>
+            <td>
+              {% if not opportunity['is_open'] %}
+                <span class="pill pill-closed">Closed</span>
+              {% elif opportunity['is_expired'] %}
+                <span class="pill pill-closed">Expired</span>
+              {% else %}
+                <span class="pill pill-pass">Open</span>
+              {% endif %}
+            </td>
+            <td class="right">
+              <a class="btn btn-ghost btn-small dark-ghost"
+                 href="{{ url_for('admin_opportunity_edit', opportunity_id=opportunity['id']) }}">
+                Edit
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <h2>No listings yet</h2>
+    <p class="muted">Create the first opportunity.</p>
+  </div>
+{% endif %}
+{% endblock %}
