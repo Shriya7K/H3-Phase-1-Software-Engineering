@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Access denied{% endblock %}
+
+{% block content %}
+<section class="error-wrap">
+  <div class="card error-card">
+    <p class="error-code">403</p>
+    <h1>Access denied</h1>
+    <p class="muted">
+      {% if session.get('user_id') %}
+        This page is for administrators and recruiters. Your account
+        ({{ session.get('user_role') }}) doesn't have access.
+      {% else %}
+        You need to sign in with an administrator account to view this page.
+      {% endif %}
+    </p>
+    <a class="btn btn-primary" href="{{ url_for('index') }}">Go back to the portal</a>
+  </div>
+</section>
+{% endblock %}

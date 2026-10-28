@@ -1131,7 +1131,7 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.errorhandler(403)
     def forbidden(error):
-        return render_template("404.html"), 403
+        return render_template("403.html"), 403
 
     @app.cli.command("reset-db")
     def reset_db_command():
