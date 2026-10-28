@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Application records{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Admin</p>
+    <h1>Application records</h1>
+    <p class="muted">
+      {{ applications|length }} of {{ total }} application{{ '' if total == 1 else 's' }}
+      {%- if active_status %} with status “{{ active_status }}”{% endif %}.
+    </p>
+  </div>
+</header>
+
+{% include "_admin_nav.html" %}
+
+<nav class="filter-row" aria-label="Filter by status">
+  <a class="filter-pill {{ 'active' if not active_status }}"
+     href="{{ url_for('admin_applications') }}">
+    All ({{ total }})
+  </a>
+  {% for status in statuses %}
+    <a class="filter-pill {{ 'active' if active_status == status }}"
+       href="{{ url_for('admin_applications', status=status) }}">
+      {{ status }} ({{ counts[status] }})
+    </a>
+  {% endfor %}
+</nav>
+
+{% if applications %}
+  <div class="card table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Opportunity</th>
+          <th>Applied</th>
+          <th>Status</th>
+          <th>Update</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for application in applications %}
+          <tr>
+            <td>
+              <strong>{{ application['student_name'] }}</strong><br>
+              <span class="muted small">{{ application['student_email'] }}</span>
+            </td>
+            <td>
+              <strong>{{ application['title'] }}</strong><br>
+              <span class="muted small">{{ application['company'] }}</span>
+            </td>
+            <td class="muted small">{{ application['applied_at'][:10] }}</td>
+            <td>
+              <span class="badge badge-status-{{ application['status']|lower|replace(' ', '-') }}">
+                {{ application['status'] }}
+              </span>
+            </td>
+            <td>
+              <form class="inline-form" method="post"
+                    action="{{ url_for('update_application_status', application_id=application['id']) }}">
+                <select name="status" class="select-input select-small" aria-label="New status">
+                  {% for status in statuses %}
+                    <option value="{{ status }}"
+                            {{ 'selected' if application['status'] == status }}>
+                      {{ status }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <button class="btn btn-primary btn-small" type="submit">Save</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <h2>No applications to show</h2>
+    <p class="muted">
+      {% if active_status %}Nothing with that status yet.{% else %}No student has applied yet.{% endif %}
+    </p>
+    {% if active_status %}
+      <a class="btn btn-primary" href="{{ url_for('admin_applications') }}">Clear filter</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

@@ -1077,6 +1077,52 @@ def create_app(test_config: dict | None = None) -> Flask:
         flash("Question deleted.", "success")
         return redirect(url_for("admin_test_questions", test_id=row["test_id"]))
 
+    # -- #28 Manage application records (FR-16) -----------------------------
+
+    APPLICATION_STATUSES = (
+        "Submitted", "Under Review", "Shortlisted", "Accepted", "Rejected",
+    )
+
+    @app.get("/admin/applications")
+    @admin_required
+    def admin_applications():
+        db = get_db()
+
+        status_filter = (request.args.get("status") or "").strip()
+        if status_filter not in APPLICATION_STATUSES:
+            status_filter = ""
+
+        sql = (
+            "SELECT a.id, a.status, a.notes, a.applied_at, a.updated_at, "
+            "       u.name AS student_name, u.email AS student_email, "
+            "       o.id AS opportunity_id, o.title, o.company, o.type "
+            "FROM applications a "
+            "JOIN users u ON a.user_id = u.id "
+            "JOIN opportunities o ON a.opportunity_id = o.id "
+        )
+        params: list[str] = []
+        if status_filter:
+            sql += "WHERE a.status = ? "
+            params.append(status_filter)
+        sql += "ORDER BY a.applied_at DESC, a.id DESC"
+
+        rows = db.execute(sql, params).fetchall()
+
+        counts = {status: 0 for status in APPLICATION_STATUSES}
+        for row in db.execute(
+            "SELECT status, COUNT(*) AS c FROM applications GROUP BY status"
+        ).fetchall():
+            counts[row["status"]] = row["c"]
+
+        return render_template(
+            "admin_applications.html",
+            applications=rows,
+            statuses=APPLICATION_STATUSES,
+            active_status=status_filter,
+            counts=counts,
+            total=sum(counts.values()),
+        )
+
     # -- Errors & maintenance commands --------------------------------------
 
     @app.errorhandler(404)
