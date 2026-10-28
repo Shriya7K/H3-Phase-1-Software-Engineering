@@ -43,3 +43,14 @@ def auth_client(client):
     response = client.post("/login", data=STUDENT)
     assert response.status_code == 302
     return client
+
+
+ADMIN = {"email": "admin@campus.edu", "password": "admin123"}
+
+
+@pytest.fixture()
+def admin_client(client):
+    """A separate client signed in as the demo admin/recruiter."""
+    response = client.post("/login", data=ADMIN)
+    assert response.status_code == 302
+    return client
