@@ -917,6 +917,166 @@ def create_app(test_config: dict | None = None) -> Flask:
             "admin_opportunity_form.html", opportunity=dict(row), mode="edit"
         )
 
+    # -- #20 Manage test questions (FR-14) ----------------------------------
+
+    def _question_form_values(form):
+        """Read the question form and validate it. Returns (values, errors)."""
+        values = {
+            field: (form.get(field) or "").strip()
+            for field in (
+                "question_text", "option_a", "option_b",
+                "option_c", "option_d", "correct_option",
+            )
+        }
+        values["correct_option"] = values["correct_option"].upper()
+        errors = [
+            f"{label} is required."
+            for field, label in (
+                ("question_text", "Question text"),
+                ("option_a", "Option A"),
+                ("option_b", "Option B"),
+                ("option_c", "Option C"),
+                ("option_d", "Option D"),
+            )
+            if not values[field]
+        ]
+        if values["correct_option"] not in ("A", "B", "C", "D"):
+            errors.append("Correct option must be A, B, C or D.")
+        return values, errors
+
+    @app.get("/admin/questions")
+    @admin_required
+    def admin_questions_picker():
+        """Pick a test before managing its question bank."""
+        tests = get_db().execute(
+            "SELECT t.id, t.name, t.category, t.difficulty, "
+            "       COUNT(q.id) AS question_count "
+            "FROM aptitude_tests t "
+            "LEFT JOIN test_questions q ON q.test_id = t.id "
+            "GROUP BY t.id "
+            "ORDER BY t.category ASC, t.name ASC"
+        ).fetchall()
+        return render_template("admin_questions_picker.html", tests=tests)
+
+    @app.get("/admin/tests/<int:test_id>/questions")
+    @admin_required
+    def admin_test_questions(test_id: int):
+        db = get_db()
+        test = db.execute(
+            "SELECT id, name, category, num_questions FROM aptitude_tests WHERE id = ?",
+            (test_id,),
+        ).fetchone()
+        if test is None:
+            abort(404)
+        questions = db.execute(
+            "SELECT id, test_id, question_text, option_a, option_b, option_c, "
+            "option_d, correct_option FROM test_questions WHERE test_id = ? ORDER BY id",
+            (test_id,),
+        ).fetchall()
+        return render_template(
+            "admin_questions.html",
+            test=test,
+            questions=questions,
+            tests=db.execute(
+                "SELECT id, name FROM aptitude_tests ORDER BY name"
+            ).fetchall(),
+        )
+
+    @app.route("/admin/tests/<int:test_id>/questions/new", methods=["GET", "POST"])
+    @admin_required
+    def admin_question_new(test_id: int):
+        db = get_db()
+        test = db.execute(
+            "SELECT id, name FROM aptitude_tests WHERE id = ?", (test_id,)
+        ).fetchone()
+        if test is None:
+            abort(404)
+
+        if request.method == "POST":
+            values, errors = _question_form_values(request.form)
+            if not errors:
+                db.execute(
+                    "INSERT INTO test_questions (test_id, question_text, option_a, "
+                    "option_b, option_c, option_d, correct_option) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        test_id, values["question_text"], values["option_a"],
+                        values["option_b"], values["option_c"], values["option_d"],
+                        values["correct_option"],
+                    ),
+                )
+                db.commit()
+                flash("Question added.", "success")
+                return redirect(url_for("admin_test_questions", test_id=test_id))
+            for error in errors:
+                flash(error, "error")
+            return render_template(
+                "admin_question_form.html", test=test, question=values, mode="new"
+            ), 400
+
+        return render_template(
+            "admin_question_form.html",
+            test=test,
+            question={"correct_option": "A"},
+            mode="new",
+        )
+
+    @app.route("/admin/questions/<int:question_id>/edit", methods=["GET", "POST"])
+    @admin_required
+    def admin_question_edit(question_id: int):
+        db = get_db()
+        row = db.execute(
+            "SELECT id, test_id, question_text, option_a, option_b, option_c, "
+            "option_d, correct_option FROM test_questions WHERE id = ?",
+            (question_id,),
+        ).fetchone()
+        if row is None:
+            abort(404)
+        test = db.execute(
+            "SELECT id, name FROM aptitude_tests WHERE id = ?", (row["test_id"],)
+        ).fetchone()
+
+        if request.method == "POST":
+            values, errors = _question_form_values(request.form)
+            if not errors:
+                db.execute(
+                    "UPDATE test_questions SET question_text = ?, option_a = ?, "
+                    "option_b = ?, option_c = ?, option_d = ?, correct_option = ? "
+                    "WHERE id = ?",
+                    (
+                        values["question_text"], values["option_a"], values["option_b"],
+                        values["option_c"], values["option_d"], values["correct_option"],
+                        question_id,
+                    ),
+                )
+                db.commit()
+                flash("Question updated.", "success")
+                return redirect(url_for("admin_test_questions", test_id=row["test_id"]))
+            for error in errors:
+                flash(error, "error")
+            values["id"] = question_id
+            return render_template(
+                "admin_question_form.html", test=test, question=values, mode="edit"
+            ), 400
+
+        return render_template(
+            "admin_question_form.html", test=test, question=dict(row), mode="edit"
+        )
+
+    @app.post("/admin/questions/<int:question_id>/delete")
+    @admin_required
+    def admin_question_delete(question_id: int):
+        db = get_db()
+        row = db.execute(
+            "SELECT id, test_id FROM test_questions WHERE id = ?", (question_id,)
+        ).fetchone()
+        if row is None:
+            abort(404)
+        db.execute("DELETE FROM test_questions WHERE id = ?", (question_id,))
+        db.commit()
+        flash("Question deleted.", "success")
+        return redirect(url_for("admin_test_questions", test_id=row["test_id"]))
+
     # -- Errors & maintenance commands --------------------------------------
 
     @app.errorhandler(404)

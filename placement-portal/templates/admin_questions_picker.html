@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Test questions{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Admin</p>
+    <h1>Test questions</h1>
+    <p class="muted">Pick a test to add, edit or remove its questions.</p>
+  </div>
+</header>
+
+{% include "_admin_nav.html" %}
+
+{% if tests %}
+  <div class="card table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Category</th>
+          <th>Difficulty</th>
+          <th class="num">Questions</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for test in tests %}
+          <tr>
+            <td><strong>{{ test['name'] }}</strong></td>
+            <td>{{ test['category'] }}</td>
+            <td>{{ test['difficulty'] }}</td>
+            <td class="num">{{ test['question_count'] }}</td>
+            <td class="right">
+              <a class="btn btn-ghost btn-small dark-ghost"
+                 href="{{ url_for('admin_test_questions', test_id=test['id']) }}">
+                Manage
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <h2>No tests yet</h2>
+    <p class="muted">Aptitude tests are created by the seed data.</p>
+  </div>
+{% endif %}
+{% endblock %}

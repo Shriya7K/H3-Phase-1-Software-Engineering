@@ -3,4 +3,8 @@
   <a href="{{ url_for('admin_opportunities') }}"
      class="{{ 'active' if request.endpoint in ('admin_opportunities', 'admin_opportunity_new', 'admin_opportunity_edit') }}">
     Opportunity listings
+  </a>
+  <a href="{{ url_for('admin_questions_picker') }}"
+     class="{{ 'active' if request.endpoint in ('admin_questions_picker', 'admin_test_questions', 'admin_question_new', 'admin_question_edit') }}">
+    Test questions
   </a></nav>
