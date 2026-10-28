@@ -135,6 +135,20 @@ def create_app(test_config: dict | None = None) -> Flask:
 
         return wrapped_view
 
+    def admin_required(view):
+        """Admin/recruiter pages: students get a 403, anonymous users log in."""
+
+        @wraps(view)
+        def wrapped_view(*args, **kwargs):
+            if not session.get("user_id"):
+                next_url = request.full_path if request.query_string else request.path
+                return redirect(url_for("login", next=next_url))
+            if session.get("user_role") != "admin":
+                abort(403)
+            return view(*args, **kwargs)
+
+        return wrapped_view
+
     # -- Home ----------------------------------------------------------------
 
     @app.get("/")
@@ -713,6 +727,72 @@ def create_app(test_config: dict | None = None) -> Flask:
             (user_id,),
         ).fetchall()
         return render_template("my_results.html", attempts=attempts)
+
+    # -- #19 Track preparation progress (FR-11) ------------------------------
+
+    @app.get("/progress")
+    @login_required
+    def progress():
+        db = get_db()
+        user_id = session["user_id"]
+
+        summary = db.execute(
+            """
+            SELECT COUNT(*) AS attempts,
+                   COALESCE(AVG(percentage), 0) AS avg_pct,
+                   COALESCE(MAX(percentage), 0) AS best_pct,
+                   COALESCE(SUM(passed), 0)    AS passed
+            FROM test_attempts WHERE user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+
+        application_total = db.execute(
+            "SELECT COUNT(*) AS c FROM applications WHERE user_id = ?", (user_id,)
+        ).fetchone()["c"]
+
+        by_test = db.execute(
+            """
+            SELECT t.id AS test_id, t.name, t.category,
+                   COUNT(*) AS attempts,
+                   AVG(ta.percentage) AS avg_pct,
+                   MAX(ta.percentage) AS best_pct
+            FROM test_attempts ta
+            JOIN aptitude_tests t ON ta.test_id = t.id
+            WHERE ta.user_id = ?
+            GROUP BY t.id
+            ORDER BY t.category ASC, t.name ASC
+            """,
+            (user_id,),
+        ).fetchall()
+
+        recent = db.execute(
+            """
+            SELECT ta.id, ta.score, ta.total_questions, ta.percentage, ta.passed,
+                   ta.completed_at, t.name AS test_name, t.id AS test_id
+            FROM test_attempts ta
+            JOIN aptitude_tests t ON ta.test_id = t.id
+            WHERE ta.user_id = ?
+            ORDER BY ta.completed_at DESC, ta.id DESC
+            LIMIT 10
+            """,
+            (user_id,),
+        ).fetchall()
+
+        status_counts = db.execute(
+            "SELECT status, COUNT(*) AS c FROM applications WHERE user_id = ? "
+            "GROUP BY status ORDER BY c DESC",
+            (user_id,),
+        ).fetchall()
+
+        return render_template(
+            "progress.html",
+            summary=summary,
+            application_total=application_total,
+            by_test=by_test,
+            recent=recent,
+            status_counts=status_counts,
+        )
 
     # -- Errors & maintenance commands --------------------------------------
 
