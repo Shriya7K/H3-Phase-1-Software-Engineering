@@ -1,0 +1,6 @@
+{# Shared tab strip for the admin/recruiter screens. #}
+<nav class="admin-tabs" aria-label="Admin sections">
+  <a href="{{ url_for('admin_opportunities') }}"
+     class="{{ 'active' if request.endpoint in ('admin_opportunities', 'admin_opportunity_new', 'admin_opportunity_edit') }}">
+    Opportunity listings
+  </a></nav>

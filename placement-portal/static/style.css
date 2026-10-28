@@ -687,3 +687,72 @@ h2 { font-size: 1.05rem; }
 }
 .option-list .is-correct { color: var(--green); font-weight: 600; }
 
+/* -- Admin tabs -- */
+.admin-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+}
+.admin-tabs a {
+  padding: 0.55rem 0.85rem;
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.admin-tabs a:hover { color: var(--brand); text-decoration: none; }
+.admin-tabs a.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+/* -- Forms -- */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.field textarea {
+  width: 100%;
+  padding: 0.62rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--ink);
+  background: #fbfcfe;
+  resize: vertical;
+}
+.field textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(31, 95, 191, 0.14);
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+.checkbox-row input { width: 16px; height: 16px; }
+.form-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.35rem; }
+.inline-form { display: flex; gap: 0.4rem; align-items: center; }
+.select-small { padding: 0.35rem 0.5rem; font-size: 0.82rem; }
+.row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+.row-actions form { display: inline; }
+
+/* Ghost buttons on a light background need dark outlines */
+.dark-ghost {
+  border-color: var(--line);
+  color: var(--ink-soft);
+  background: var(--surface);
+}
+.dark-ghost:hover { background: #f4f6fa; color: var(--ink); }
+.danger-ghost { border-color: #f5d2ce; color: var(--red); background: var(--surface); }
+.danger-ghost:hover { background: var(--red-soft); }
+
+@media (max-width: 860px) {
+  .two-col { grid-template-columns: 1fr; }
+}

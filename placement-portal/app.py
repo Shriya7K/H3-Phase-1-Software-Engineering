@@ -794,6 +794,129 @@ def create_app(test_config: dict | None = None) -> Flask:
             status_counts=status_counts,
         )
 
+    # -- #26 Create and update opportunity listings (FR-13) ------------------
+
+    def _opportunity_form_values(form):
+        """Read the listing form and validate it. Returns (values, errors)."""
+        values = {
+            "title": (form.get("title") or "").strip(),
+            "company": (form.get("company") or "").strip(),
+            "type": (form.get("type") or "").strip(),
+            "location": (form.get("location") or "").strip(),
+            "stipend": (form.get("stipend") or "").strip(),
+            "description": (form.get("description") or "").strip(),
+            "eligibility": (form.get("eligibility") or "").strip(),
+            "deadline": (form.get("deadline") or "").strip(),
+            "is_open": 1 if form.get("is_open") else 0,
+        }
+        errors = [
+            f"{label} is required."
+            for field, label in (
+                ("title", "Title"),
+                ("company", "Company"),
+                ("location", "Location"),
+                ("stipend", "Stipend / CTC"),
+                ("description", "Description"),
+                ("eligibility", "Eligibility"),
+                ("deadline", "Deadline"),
+            )
+            if not values[field]
+        ]
+        if values["type"] not in ("Internship", "Placement"):
+            errors.append("Type must be Internship or Placement.")
+        if values["deadline"]:
+            try:
+                datetime.strptime(values["deadline"], "%Y-%m-%d")
+            except ValueError:
+                errors.append("Deadline must be a valid date (YYYY-MM-DD).")
+        return values, errors
+
+    @app.get("/admin/opportunities")
+    @admin_required
+    def admin_opportunities():
+        rows = get_db().execute(
+            "SELECT id, title, company, type, location, deadline, is_open "
+            "FROM opportunities "
+            "ORDER BY is_open DESC, deadline ASC, id ASC"
+        ).fetchall()
+        today = date.today().isoformat()
+        items = [
+            dict(row) | {"is_expired": row["deadline"] < today} for row in rows
+        ]
+        return render_template("admin_opportunities.html", opportunities=items)
+
+    @app.route("/admin/opportunities/new", methods=["GET", "POST"])
+    @admin_required
+    def admin_opportunity_new():
+        if request.method == "POST":
+            values, errors = _opportunity_form_values(request.form)
+            if not errors:
+                db = get_db()
+                db.execute(
+                    "INSERT INTO opportunities (title, company, type, location, stipend, "
+                    "description, eligibility, deadline, is_open) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        values["title"], values["company"], values["type"],
+                        values["location"], values["stipend"], values["description"],
+                        values["eligibility"], values["deadline"], values["is_open"],
+                    ),
+                )
+                db.commit()
+                flash(f"Listing '{values['title']}' created.", "success")
+                return redirect(url_for("admin_opportunities"))
+            for error in errors:
+                flash(error, "error")
+            return render_template(
+                "admin_opportunity_form.html", opportunity=values, mode="new"
+            ), 400
+
+        return render_template(
+            "admin_opportunity_form.html",
+            opportunity={"type": "Internship", "is_open": 1},
+            mode="new",
+        )
+
+    @app.route("/admin/opportunities/<int:opportunity_id>/edit", methods=["GET", "POST"])
+    @admin_required
+    def admin_opportunity_edit(opportunity_id: int):
+        db = get_db()
+        row = db.execute(
+            "SELECT id, title, company, type, location, stipend, description, "
+            "eligibility, deadline, is_open FROM opportunities WHERE id = ?",
+            (opportunity_id,),
+        ).fetchone()
+        if row is None:
+            abort(404)
+
+        if request.method == "POST":
+            values, errors = _opportunity_form_values(request.form)
+            if not errors:
+                db.execute(
+                    "UPDATE opportunities SET title = ?, company = ?, type = ?, "
+                    "location = ?, stipend = ?, description = ?, eligibility = ?, "
+                    "deadline = ?, is_open = ? WHERE id = ?",
+                    (
+                        values["title"], values["company"], values["type"],
+                        values["location"], values["stipend"], values["description"],
+                        values["eligibility"], values["deadline"], values["is_open"],
+                        opportunity_id,
+                    ),
+                )
+                db.commit()
+                flash(f"Listing '{values['title']}' updated.", "success")
+                return redirect(url_for("admin_opportunities"))
+            for error in errors:
+                flash(error, "error")
+            values["id"] = opportunity_id
+            return render_template(
+                "admin_opportunity_form.html", opportunity=values, mode="edit"
+            ), 400
+
+        return render_template(
+            "admin_opportunity_form.html", opportunity=dict(row), mode="edit"
+        )
+
     # -- Errors & maintenance commands --------------------------------------
 
     @app.errorhandler(404)
