@@ -80,4 +80,33 @@ python -m pytest tests -v
 * **Input Validation & Integrity (`SR-05`, `NFR-09`)**: Input validation across forms, email normalization, CGPA and batch constraints, and SQLite foreign key constraints with cascade deletes.
 * **Role-Based Access Control (`FR-03`, `SR-03`, `TC-03`)**: Restricted routes require appropriate role permissions; unprivileged users cannot modify application statuses.
 * **Password Security (`SR-02`, `TC-13`)**: PBKDF2 salted hashes verify credentials; plaintext passwords never touch database storage.
-* **Testing Coverage**: 91 unit and integration tests across 7 test suites validating all functional requirements, security boundaries, and response time thresholds.
+* **Testing Coverage**: 156 unit and integration tests across 9 test suites validating all functional requirements, security boundaries, and response time thresholds.
+
+## Iteration 2 additions
+
+| Task | Feature | Where |
+|------|---------|-------|
+| #19 | Track preparation progress | `GET /progress` - attempts, average/best score, per-test breakdown, recent attempts, application summary |
+| #26 | Create and update opportunity listings | `GET /admin/opportunities`, `GET/POST /admin/opportunities/new`, `GET/POST /admin/opportunities/<id>/edit` |
+| #20 | Manage test questions | `GET /admin/questions`, `GET /admin/tests/<id>/questions`, `GET/POST .../questions/new`, `GET/POST /admin/questions/<id>/edit`, `POST /admin/questions/<id>/delete` |
+| #28 | View and update application records | `GET /admin/applications` with an inline status update |
+
+### Roles
+
+Admin/recruiter screens are guarded by `@admin_required`: students receive a
+**403 access-denied** page, anonymous visitors are redirected to login. Use the
+seeded admin account (`admin@campus.edu` / `admin123`) to reach them; the
+**Admin** link only appears in the nav for that role.
+
+### Implementation notes
+
+* Listing and question forms validate on the server and re-render with the
+  submitted values plus per-field messages, so a failed submit never loses input.
+* Un-ticking "Accepting applications" hides a listing from students while its
+  detail page keeps resolving with an "Applications closed" badge.
+* Question deletion is POST-only, and the correct option is normalised to
+  upper case so `a` and `A` both work.
+* Application records are read from a single joined query and filter in SQL, not
+  in Python, keeping the page fast as records grow.
+* Progress figures are computed in SQL (`COUNT`, `AVG`, `MAX`) rather than by
+  loading attempts into memory.
