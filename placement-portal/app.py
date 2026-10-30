@@ -580,9 +580,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         ).fetchall()
         return render_template("aptitude_tests.html", tests=tests)
 
-    # -- #18 Calculate and display test results (FR-09, FR-10, TC-07) ---------
+    # -- #17 Attempt a test & #18 Calculate results (FR-09, FR-10, TC-07) ----
 
     @app.get("/aptitude-tests/<int:test_id>")
+    @app.get("/aptitude-tests/<int:test_id>/take")
     @login_required
     def take_aptitude_test(test_id: int):
         db = get_db()
@@ -654,6 +655,118 @@ def create_app(test_config: dict | None = None) -> Flask:
 
         flash(f"Test completed! You scored {score}/{total_questions} ({percentage}%).", "success")
         return redirect(url_for("test_attempt_result", test_id=test_id, attempt_id=attempt_id))
+
+    # -- #17 REST API Assessment Endpoints (Architecture Section 3.3, FR-09, FR-10, TC-07)
+
+    @app.get("/api/tests")
+    @login_required
+    def api_list_tests():
+        """Architecture Section 3.3 REST API endpoint: List available tests (FR-09)."""
+        db = get_db()
+        tests = db.execute(
+            "SELECT id, name, category, description, num_questions, "
+            "duration_minutes, difficulty "
+            "FROM aptitude_tests "
+            "WHERE is_active = 1 "
+            "ORDER BY category ASC, name ASC"
+        ).fetchall()
+        return jsonify({"success": True, "data": [dict(t) for t in tests]}), 200
+
+    @app.get("/api/tests/<int:test_id>")
+    @login_required
+    def api_get_test(test_id: int):
+        """Architecture Section 3.3 REST API endpoint: Get test questions to attempt (FR-09)."""
+        db = get_db()
+        test = db.execute(
+            "SELECT id, name, category, description, num_questions, duration_minutes, difficulty "
+            "FROM aptitude_tests WHERE id = ? AND is_active = 1",
+            (test_id,),
+        ).fetchone()
+        if test is None:
+            return jsonify({"success": False, "message": "Aptitude test not found"}), 404
+
+        questions = db.execute(
+            "SELECT id, test_id, question_text, option_a, option_b, option_c, option_d "
+            "FROM test_questions WHERE test_id = ? ORDER BY id ASC",
+            (test_id,),
+        ).fetchall()
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "test": dict(test),
+                "questions": [dict(q) for q in questions],
+            }
+        }), 200
+
+    @app.post("/api/tests/<int:test_id>/attempts")
+    @login_required
+    def api_submit_test_attempt(test_id: int):
+        """Architecture Section 3.3 REST API endpoint: Submit attempt (FR-09, FR-10, TC-07)."""
+        db = get_db()
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"success": False, "message": "Authentication required"}), 401
+
+        test = db.execute(
+            "SELECT id, name, category FROM aptitude_tests WHERE id = ? AND is_active = 1",
+            (test_id,),
+        ).fetchone()
+        if test is None:
+            return jsonify({"success": False, "message": "Aptitude test not found"}), 404
+
+        questions = db.execute(
+            "SELECT id, question_text, correct_option FROM test_questions WHERE test_id = ? ORDER BY id ASC",
+            (test_id,),
+        ).fetchall()
+        if not questions:
+            return jsonify({"success": False, "message": "No questions found for this test"}), 400
+
+        data = request.get_json(silent=True) or {}
+        raw_answers = data.get("answers", data)
+        if not isinstance(raw_answers, dict):
+            raw_answers = {}
+
+        total_questions = len(questions)
+        score = 0
+        answers = {}
+
+        for q in questions:
+            qid = str(q["id"])
+            ans = raw_answers.get(qid) or raw_answers.get(f"question_{qid}") or ""
+            selected = str(ans).strip().upper()
+            answers[qid] = selected
+            if selected == q["correct_option"]:
+                score += 1
+
+        percentage = round((score / total_questions) * 100.0, 1) if total_questions > 0 else 0.0
+        passed = 1 if percentage >= 50.0 else 0
+
+        cursor = db.execute(
+            """
+            INSERT INTO test_attempts
+                (user_id, test_id, score, total_questions, percentage, passed, answers_json, completed_at)
+            VALUES
+                (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            (user_id, test_id, score, total_questions, percentage, passed, json.dumps(answers)),
+        )
+        attempt_id = cursor.lastrowid
+        db.commit()
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "attemptId": attempt_id,
+                "testId": test_id,
+                "testName": test["name"],
+                "score": score,
+                "totalQuestions": total_questions,
+                "percentage": percentage,
+                "passed": bool(passed),
+            },
+            "message": "Test attempt submitted successfully"
+        }), 201
 
     @app.get("/aptitude-tests/<int:test_id>/results/<int:attempt_id>")
     @login_required
