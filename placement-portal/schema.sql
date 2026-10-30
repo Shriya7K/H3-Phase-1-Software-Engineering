@@ -33,6 +33,9 @@ CREATE INDEX IF NOT EXISTS idx_opportunities_open_deadline
 CREATE INDEX IF NOT EXISTS idx_opportunities_type
     ON opportunities (type);
 
+CREATE INDEX IF NOT EXISTS idx_opportunities_open_location
+    ON opportunities (is_open, location);
+
 CREATE TABLE IF NOT EXISTS aptitude_tests (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     name             TEXT NOT NULL,
@@ -106,3 +109,19 @@ CREATE TABLE IF NOT EXISTS test_attempts (
 
 CREATE INDEX IF NOT EXISTS idx_test_attempts_user
     ON test_attempts (user_id);
+
+
+-- SR-06 & TC-14: Audit logging for security-relevant administrative actions
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    actor_email TEXT NOT NULL,
+    action      TEXT NOT NULL,
+    details     TEXT,
+    result      TEXT NOT NULL DEFAULT 'SUCCESS',
+    ip_address  TEXT,
+    timestamp   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp
+    ON audit_logs (timestamp);

@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Task #25 · FR-15 User Administration</p>
+    <h1>Manage Registered Users</h1>
+    <p class="muted">Search, filter, and manage user accounts and system permissions in compliance with RBAC.</p>
+  </div>
+  <span class="count-chip">{{ users|length }} user{{ 's' if users|length != 1 }}</span>
+</header>
+
+<!-- Search and Role Filter Form -->
+<section class="card search-filter-box" style="padding: 1.1rem 1.25rem; margin-bottom: 1.5rem;">
+  <form method="get" action="{{ url_for('admin_users') }}" class="search-form">
+    <div class="search-inputs">
+      <div class="field search-field" style="flex: 2;">
+        <label for="q" class="sr-only">Search</label>
+        <input id="q" name="q" type="text" value="{{ search_query }}"
+               placeholder="Search users by name, email, or USN...">
+      </div>
+
+      <div class="field" style="flex: 1; min-width: 160px;">
+        <label for="role" class="sr-only">Role</label>
+        <select id="role" name="role" class="select-input">
+          <option value="">All Roles</option>
+          <option value="student" {{ 'selected' if active_role == 'student' }}>Students</option>
+          <option value="admin" {{ 'selected' if active_role == 'admin' }}>Administrators</option>
+        </select>
+      </div>
+
+      <div class="search-buttons">
+        <button class="btn btn-primary" type="submit">Search</button>
+        {% if search_query or active_role %}
+          <a class="btn btn-ghost" href="{{ url_for('admin_users') }}" style="color: var(--ink-soft); border-color: var(--line);">Clear</a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</section>
+
+<!-- Users Table -->
+<section class="card" style="padding: 1.25rem 1.4rem; margin-bottom: 1.75rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 style="font-size: 1.05rem;">User Directory</h2>
+    <span class="muted" style="font-size: 0.8rem;">Click update to save privilege changes</span>
+  </div>
+
+  {% if users %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Role</th>
+            <th>Profile Details</th>
+            <th>Activity</th>
+            <th>Role Assignment</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+            <tr>
+              <td>
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="avatar" style="width: 30px; height: 30px; font-size: 0.78rem;" aria-hidden="true">
+                    {{ u.name[:1]|upper }}
+                  </span>
+                  <div>
+                    <strong>{{ u.name }}</strong>
+                    {% if u.id == session.get('user_id') %}
+                      <span class="muted" style="font-size: 0.72rem; font-weight: 600;">(Current Account)</span>
+                    {% endif %}
+                    <div class="muted" style="font-size: 0.78rem;">{{ u.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge {{ 'badge-placement' if u.role == 'admin' else 'badge-internship' }}" style="font-size: 0.75rem;">
+                  {{ u.role|capitalize }}
+                </span>
+              </td>
+              <td style="font-size: 0.82rem;">
+                {% if u.usn %}
+                  <div><strong>USN:</strong> {{ u.usn }}</div>
+                {% endif %}
+                {% if u.department %}
+                  <div class="muted">{{ u.department }}{% if u.batch_year %} ({{ u.batch_year }}){% endif %}</div>
+                {% endif %}
+                {% if u.cgpa is not none and u.cgpa > 0 %}
+                  <div><span class="muted">CGPA:</span> {{ "%.2f"|format(u.cgpa) }}</div>
+                {% endif %}
+                {% if not u.usn and not u.department %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.82rem;">
+                <div><span class="muted">Applications:</span> {{ u.app_count }}</div>
+                <div><span class="muted">Tests Taken:</span> {{ u.test_count }}</div>
+              </td>
+              <td>
+                <form method="post" action="{{ url_for('admin_update_user_role', user_id=u.id) }}" style="display: flex; gap: 0.4rem; align-items: center;">
+                  <select name="role" class="select-input" style="padding: 0.3rem 0.5rem; font-size: 0.8rem; width: auto;">
+                    <option value="student" {{ 'selected' if u.role == 'student' }}>Student</option>
+                    <option value="admin" {{ 'selected' if u.role == 'admin' }}>Admin</option>
+                  </select>
+                  <button type="submit" class="btn btn-primary btn-small" style="padding: 0.3rem 0.6rem; font-size: 0.76rem;">Save</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state" style="padding: 2rem 1rem;">
+      <h3>No users found</h3>
+      <p class="muted">
+        {% if search_query or active_role %}
+          No users match the search criteria. Try a different query or <a href="{{ url_for('admin_users') }}">clear filters</a>.
+        {% else %}
+          No registered users in the database.
+        {% endif %}
+      </p>
+    </div>
+  {% endif %}
+</section>
+
+<!-- Security & Privacy Architecture Note -->
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.75rem; background: #fbfcfe; border-left: 4px solid var(--brand);">
+  <p style="margin: 0; font-size: 0.85rem; color: var(--ink-soft);">
+    <strong>Security &amp; Data Protection (SR-02 &amp; SO-01):</strong>
+    All user passwords are encrypted as salted PBKDF2 hashes upon registration. Plaintext passwords and hash representations are strictly excluded from interface rendering and administrative APIs.
+  </p>
+</div>
+
+<!-- Recent Security Audit Trail (SR-06, TC-14) -->
+<section class="card" style="padding: 1.25rem 1.4rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <div>
+      <h2 style="font-size: 1.05rem;">Administrative Audit Trail (SR-06)</h2>
+      <p class="muted" style="font-size: 0.8rem;">Log of security-relevant administrative actions</p>
+    </div>
+    <span class="badge" style="background: #eef2f6; color: var(--ink-soft);">SR-06 Logged</span>
+  </div>
+
+  {% if audit_logs %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>Details</th>
+            <th>Actor</th>
+            <th>Result</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in audit_logs %}
+            <tr>
+              <td><span class="audit-tag">{{ log.action }}</span></td>
+              <td style="font-size: 0.82rem;">{{ log.details }}</td>
+              <td style="font-size: 0.82rem;">{{ log.actor_email }}</td>
+              <td>
+                <span style="font-size: 0.76rem; font-weight: 700; color: {{ 'var(--green)' if log.result == 'SUCCESS' else 'var(--red)' }};">
+                  {{ log.result }}
+                </span>
+              </td>
+              <td class="muted" style="font-size: 0.8rem;">{{ log.timestamp[:19] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state" style="padding: 1.5rem 1rem;">
+      <p class="muted">No administrative audit records logged yet.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
