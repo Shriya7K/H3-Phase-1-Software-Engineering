@@ -161,3 +161,4 @@ def test_profile_update_bio_and_skills_length_limits(auth_client):
     )
     assert response.status_code == 400
     assert "Skills cannot exceed 500 characters." in response.get_data(as_text=True)
+

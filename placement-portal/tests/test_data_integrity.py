@@ -183,3 +183,4 @@ def test_transaction_atomicity_and_rollback(app):
     final_users_count = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     assert initial_users_count == final_users_count, "Transaction failed to roll back partial inserts"
     db.close()
+
