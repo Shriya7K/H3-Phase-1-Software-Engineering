@@ -424,6 +424,38 @@ def create_app(test_config: dict | None = None) -> Flask:
                         "profile.html", user=user, profile=request.form
                     ), 400
 
+            # Field-level validation for profile details (Task #10, SR-05, NFR-09)
+            if usn:
+                clean_usn = usn.replace("-", "").replace("_", "")
+                if not (clean_usn.isalnum() and 5 <= len(usn) <= 20):
+                    flash("Invalid USN format. USN must be 5-20 alphanumeric characters.", "error")
+                    return render_template("profile.html", user=user, profile=request.form), 400
+
+            if phone:
+                digit_count = sum(1 for c in phone if c.isdigit())
+                valid_chars = all(c.isdigit() or c in " +-()#" for c in phone)
+                if not (valid_chars and 8 <= len(phone) <= 20 and digit_count >= 7):
+                    flash("Invalid phone number format.", "error")
+                    return render_template("profile.html", user=user, profile=request.form), 400
+
+            if github_url:
+                if not (github_url.startswith("http://") or github_url.startswith("https://")):
+                    flash("GitHub URL must start with http:// or https://.", "error")
+                    return render_template("profile.html", user=user, profile=request.form), 400
+
+            if linkedin_url:
+                if not (linkedin_url.startswith("http://") or linkedin_url.startswith("https://")):
+                    flash("LinkedIn URL must start with http:// or https://.", "error")
+                    return render_template("profile.html", user=user, profile=request.form), 400
+
+            if bio and len(bio) > 1000:
+                flash("Bio cannot exceed 1000 characters.", "error")
+                return render_template("profile.html", user=user, profile=request.form), 400
+
+            if skills and len(skills) > 500:
+                flash("Skills cannot exceed 500 characters.", "error")
+                return render_template("profile.html", user=user, profile=request.form), 400
+
             # Update display name
             db.execute("UPDATE users SET name = ? WHERE id = ?", (name, user_id))
             session["user_name"] = name
