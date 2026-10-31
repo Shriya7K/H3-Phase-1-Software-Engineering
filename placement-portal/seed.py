@@ -471,4 +471,13 @@ def seed_database(connection: Connection) -> None:
         ),
     )
 
+    # Seed initial audit log entry (SR-06, TC-14)
+    connection.execute(
+        """
+        INSERT INTO audit_logs (user_id, actor_email, action, details, result, timestamp)
+        VALUES (2, 'admin@campus.edu', 'SYSTEM_INITIALIZATION', 'System database initialized and seeded with demo configuration.', 'SUCCESS', ?)
+        """,
+        ((date.today() - timedelta(days=3)).isoformat() + " 09:00:00",),
+    )
+
     connection.commit()

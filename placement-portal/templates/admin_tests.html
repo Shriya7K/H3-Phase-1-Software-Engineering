@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Aptitude Tests{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Task #27 · FR-14 Test Administration</p>
+    <h1>Manage Aptitude Tests</h1>
+    <p class="muted">Create, configure, and manage campus placement assessment tests and questions.</p>
+  </div>
+  <div style="display: flex; gap: 0.5rem; align-items: center;">
+    <a class="btn btn-primary" href="{{ url_for('admin_create_test') }}">+ Create New Test</a>
+  </div>
+</header>
+
+<!-- Stats Overview -->
+<section class="stats-grid" style="margin-bottom: 1.5rem;">
+  <div class="card stat-card">
+    <span class="stat-label">Total Tests</span>
+    <span class="stat-num">{{ tests|length }}</span>
+    <span class="stat-sub">Across all campus categories</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Published / Active</span>
+    <span class="stat-num">{{ active_count }}</span>
+    <span class="stat-sub">Visible to student candidates</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Draft / Inactive</span>
+    <span class="stat-num">{{ inactive_count }}</span>
+    <span class="stat-sub">Hidden from student portal</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Total Questions</span>
+    <span class="stat-num">{{ total_questions }}</span>
+    <span class="stat-sub">Active question bank items</span>
+  </div>
+</section>
+
+<!-- Search and Category Filter -->
+<section class="card search-filter-box" style="padding: 1.1rem 1.25rem; margin-bottom: 1.5rem;">
+  <form method="get" action="{{ url_for('admin_aptitude_tests') }}" class="search-form">
+    <div class="search-inputs">
+      <div class="field search-field" style="flex: 2;">
+        <label for="q" class="sr-only">Search</label>
+        <input id="q" name="q" type="text" value="{{ search_query }}"
+               placeholder="Search tests by title, category, or description...">
+      </div>
+
+      <div class="field" style="flex: 1; min-width: 140px;">
+        <label for="category" class="sr-only">Category</label>
+        <select id="category" name="category" class="select-input">
+          <option value="">All Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat }}" {{ 'selected' if active_category == cat }}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field" style="flex: 1; min-width: 130px;">
+        <label for="status" class="sr-only">Status</label>
+        <select id="status" name="status" class="select-input">
+          <option value="">All Statuses</option>
+          <option value="active" {{ 'selected' if active_status == 'active' }}>Active Only</option>
+          <option value="inactive" {{ 'selected' if active_status == 'inactive' }}>Inactive Only</option>
+        </select>
+      </div>
+
+      <div class="search-buttons">
+        <button class="btn btn-primary" type="submit">Filter</button>
+        {% if search_query or active_category or active_status %}
+          <a class="btn btn-ghost" href="{{ url_for('admin_aptitude_tests') }}" style="color: var(--ink-soft); border-color: var(--line);">Clear</a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</section>
+
+<!-- Tests Directory Table -->
+<section class="card" style="padding: 1.25rem 1.4rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 style="font-size: 1.05rem;">Aptitude Assessments Directory</h2>
+    <span class="muted" style="font-size: 0.8rem;">Click Manage Questions to add/edit quiz items</span>
+  </div>
+
+  {% if tests %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Test Title</th>
+            <th>Category</th>
+            <th>Difficulty</th>
+            <th>Duration</th>
+            <th>Questions</th>
+            <th>Attempts</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tests %}
+            <tr>
+              <td>
+                <a href="{{ url_for('admin_test_questions', test_id=t.id) }}">
+                  <strong>{{ t.name }}</strong>
+                </a>
+                <div class="muted" style="font-size: 0.78rem;">{{ t.description[:70] }}{% if t.description|length > 70 %}...{% endif %}</div>
+              </td>
+              <td>
+                <span class="badge badge-category" style="font-size: 0.75rem;">{{ t.category }}</span>
+              </td>
+              <td>
+                <span class="difficulty difficulty-{{ t.difficulty|lower }}" style="font-size: 0.75rem;">{{ t.difficulty }}</span>
+              </td>
+              <td>{{ t.duration_minutes }} min</td>
+              <td>
+                <strong>{{ t.actual_questions_count }}</strong>
+                {% if t.actual_questions_count != t.num_questions %}
+                  <span class="muted" style="font-size: 0.75rem;">(target: {{ t.num_questions }})</span>
+                {% endif %}
+              </td>
+              <td>{{ t.attempts_count }}</td>
+              <td>
+                <span class="badge {{ 'badge-status-accepted' if t.is_active else 'badge-status-rejected' }}" style="font-size: 0.75rem;">
+                  {{ 'Active' if t.is_active else 'Inactive' }}
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 0.35rem; align-items: center;">
+                  <a class="btn btn-primary btn-small" href="{{ url_for('admin_test_questions', test_id=t.id) }}" style="font-size: 0.76rem; padding: 0.25rem 0.55rem;">
+                    Questions ({{ t.actual_questions_count }})
+                  </a>
+                  <a class="btn btn-ghost btn-small" href="{{ url_for('admin_edit_test', test_id=t.id) }}" style="font-size: 0.76rem; padding: 0.25rem 0.55rem; color: var(--ink-soft); border-color: var(--line);">
+                    Edit
+                  </a>
+                  <form method="post" action="{{ url_for('admin_toggle_test', test_id=t.id) }}" style="margin: 0;">
+                    <button type="submit" class="btn btn-ghost btn-small" style="font-size: 0.76rem; padding: 0.25rem 0.55rem; color: {{ 'var(--red)' if t.is_active else 'var(--green)' }}; border-color: var(--line);">
+                      {{ 'Deactivate' if t.is_active else 'Activate' }}
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state" style="padding: 2.5rem 1rem;">
+      <h3>No aptitude tests found</h3>
+      <p class="muted">
+        {% if search_query or active_category or active_status %}
+          No tests match the current filter criteria. Try clearing the filters.
+        {% else %}
+          No tests have been created yet. Click "+ Create New Test" to get started.
+        {% endif %}
+      </p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

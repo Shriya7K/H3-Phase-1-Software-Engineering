@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Aptitude Test' if mode == 'edit' else 'Create Aptitude Test' }}{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Task #27 · FR-14 Test Administration</p>
+    <h1>{{ 'Edit Aptitude Test' if mode == 'edit' else 'Create New Aptitude Test' }}</h1>
+    <p class="muted">
+      {{ 'Update assessment parameters, time limits, and publication status.' if mode == 'edit' else 'Define a new campus practice test. You can add questions on the next step.' }}
+    </p>
+  </div>
+  <a class="btn btn-ghost btn-small" href="{{ url_for('admin_aptitude_tests') }}" style="color: var(--ink-soft); border-color: var(--line);">&larr; Back to Tests</a>
+</header>
+
+<section class="card" style="max-width: 640px; padding: 1.5rem 1.75rem; margin: 0 auto;">
+  <form method="post" action="{{ url_for('admin_edit_test', test_id=test.id) if mode == 'edit' else url_for('admin_create_test') }}">
+    <div class="field" style="margin-bottom: 1.25rem;">
+      <label for="name" style="display: block; font-weight: 600; margin-bottom: 0.35rem;">Test Title *</label>
+      <input id="name" name="name" type="text" class="input" style="width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-sm);"
+             value="{{ test.name if test else '' }}" required placeholder="e.g. Advanced Operating Systems">
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+      <div class="field">
+        <label for="category" style="display: block; font-weight: 600; margin-bottom: 0.35rem;">Category *</label>
+        <input id="category" name="category" type="text" class="input" style="width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-sm);"
+               value="{{ test.category if test else 'Technical' }}" required placeholder="e.g. Technical, Aptitude, English">
+      </div>
+
+      <div class="field">
+        <label for="difficulty" style="display: block; font-weight: 600; margin-bottom: 0.35rem;">Difficulty *</label>
+        <select id="difficulty" name="difficulty" class="select-input" style="width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-sm);">
+          <option value="Easy" {{ 'selected' if test and test.difficulty == 'Easy' }}>Easy</option>
+          <option value="Medium" {{ 'selected' if not test or test.difficulty == 'Medium' }}>Medium</option>
+          <option value="Hard" {{ 'selected' if test and test.difficulty == 'Hard' }}>Hard</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+      <div class="field">
+        <label for="duration_minutes" style="display: block; font-weight: 600; margin-bottom: 0.35rem;">Duration (Minutes) *</label>
+        <input id="duration_minutes" name="duration_minutes" type="number" min="1" max="180" class="input" style="width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-sm);"
+               value="{{ test.duration_minutes if test else 30 }}" required>
+      </div>
+
+      <div class="field">
+        <label for="is_active" style="display: block; font-weight: 600; margin-bottom: 0.35rem;">Publication Status *</label>
+        <select id="is_active" name="is_active" class="select-input" style="width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-sm);">
+          <option value="1" {{ 'selected' if not test or test.is_active == 1 }}>Active (Published to students)</option>
+          <option value="0" {{ 'selected' if test and test.is_active == 0 }}>Inactive (Draft / Hidden)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom: 1.5rem;">
+      <label for="description" style="display: block; font-weight: 600; margin-bottom: 0.35rem;">Description *</label>
+      <textarea id="description" name="description" rows="3" style="width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: inherit;"
+                required placeholder="Brief summary of syllabus and topics covered...">{{ test.description if test else '' }}</textarea>
+    </div>
+
+    <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: flex-end;">
+      <a class="btn btn-ghost" href="{{ url_for('admin_aptitude_tests') }}" style="color: var(--ink-soft); border-color: var(--line);">Cancel</a>
+      <button class="btn btn-primary" type="submit">{{ 'Save Changes' if mode == 'edit' else 'Create & Add Questions &rarr;' }}</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

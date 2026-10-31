@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+{% if role == 'admin' %}
+  <!-- ==================== ADMINISTRATOR DASHBOARD ==================== -->
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">Task #21 · FR-12 Analytics</p>
+      <h1>Administrator Analytics Dashboard</h1>
+      <p class="muted">System-wide overview of placement drives, student applications, and test performance.</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <a class="btn btn-primary btn-small" href="{{ url_for('admin_aptitude_tests') }}">Manage Tests</a>
+      <a class="btn btn-ghost btn-small" href="{{ url_for('admin_users') }}" style="color: var(--ink-soft); border-color: var(--line);">Manage Users</a>
+      <a class="btn btn-ghost btn-small" href="{{ url_for('opportunities') }}" style="color: var(--ink-soft); border-color: var(--line);">View Listings</a>
+    </div>
+  </header>
+
+  <!-- Key Metrics Grid -->
+  <section class="stats-grid">
+    <div class="card stat-card">
+      <span class="stat-label">Registered Users</span>
+      <span class="stat-num">{{ stats.total_users }}</span>
+      <span class="stat-sub">{{ stats.total_students }} students · {{ stats.total_admins }} admins</span>
+    </div>
+
+    <div class="card stat-card">
+      <span class="stat-label">Placement Drives</span>
+      <span class="stat-num">{{ stats.total_opps }}</span>
+      <span class="stat-sub">{{ stats.open_opps }} currently open for apply</span>
+    </div>
+
+    <div class="card stat-card">
+      <span class="stat-label">Total Applications</span>
+      <span class="stat-num">{{ stats.total_apps }}</span>
+      <span class="stat-sub">Across all student submissions</span>
+    </div>
+
+    <div class="card stat-card">
+      <span class="stat-label">Aptitude Participation</span>
+      <span class="stat-num">{{ stats.total_attempts }}</span>
+      <span class="stat-sub">
+        {% if stats.total_attempts > 0 %}
+          {{ stats.overall_avg_score }}% avg score ({{ stats.overall_pass_rate }}% pass rate)
+        {% else %}
+          No assessment attempts yet
+        {% endif %}
+      </span>
+    </div>
+  </section>
+
+  <!-- Application Pipeline Distribution -->
+  <section class="card" style="padding: 1.25rem 1.4rem; margin-bottom: 1.75rem;">
+    <h2 style="font-size: 0.95rem; margin-bottom: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">
+      Application Status Pipeline
+    </h2>
+    <div class="pipeline-row" style="margin-bottom: 0;">
+      <div class="pipeline-chip">
+        <span class="chip-label">Submitted</span>
+        <span class="chip-count">{{ stats.app_status.Submitted }}</span>
+      </div>
+      <div class="pipeline-chip">
+        <span class="chip-label">Under Review</span>
+        <span class="chip-count" style="color: var(--amber);">{{ stats.app_status['Under Review'] }}</span>
+      </div>
+      <div class="pipeline-chip">
+        <span class="chip-label">Shortlisted</span>
+        <span class="chip-count" style="color: #6941c6;">{{ stats.app_status.Shortlisted }}</span>
+      </div>
+      <div class="pipeline-chip">
+        <span class="chip-label">Accepted</span>
+        <span class="chip-count" style="color: var(--green);">{{ stats.app_status.Accepted }}</span>
+      </div>
+      <div class="pipeline-chip">
+        <span class="chip-label">Rejected</span>
+        <span class="chip-count" style="color: var(--red);">{{ stats.app_status.Rejected }}</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="dash-sections">
+    <!-- Left Column: Recent Applications Across Portal -->
+    <section class="card" style="padding: 1.25rem 1.4rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.05rem;">Recent Student Applications</h2>
+        <a class="link-arrow" href="{{ url_for('applications') }}">All Applications &rarr;</a>
+      </div>
+
+      {% if stats.recent_applications %}
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Candidate</th>
+                <th>Opportunity</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for app in stats.recent_applications %}
+                <tr>
+                  <td>
+                    <strong>{{ app.student_name }}</strong>
+                    <div class="muted" style="font-size: 0.78rem;">{{ app.student_email }}</div>
+                  </td>
+                  <td>
+                    <div>{{ app.opp_title }}</div>
+                    <div class="muted" style="font-size: 0.78rem;">{{ app.company }}</div>
+                  </td>
+                  <td>
+                    <span class="badge badge-status-{{ app.status|lower|replace(' ', '-') }}" style="font-size: 0.75rem;">
+                      {{ app.status }}
+                    </span>
+                  </td>
+                  <td class="muted" style="font-size: 0.8rem;">
+                    {{ app.applied_at[:10] }}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 1.5rem 1rem;">
+          <p class="muted">No candidate applications have been submitted yet.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <!-- Right Column: Recent Administrative Audit Log (SR-06, TC-14) -->
+    <section class="card" style="padding: 1.25rem 1.4rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+          <h2 style="font-size: 1.05rem;">Administrative Audit Trail</h2>
+          <p class="muted" style="font-size: 0.8rem;">SR-06 compliance logging</p>
+        </div>
+        <span class="badge" style="background: #eef2f6; color: var(--ink-soft);">Audited</span>
+      </div>
+
+      {% if stats.recent_audit_logs %}
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Actor</th>
+                <th>Result</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for log in stats.recent_audit_logs %}
+                <tr>
+                  <td>
+                    <span class="audit-tag">{{ log.action }}</span>
+                    <div class="muted" style="font-size: 0.78rem; margin-top: 0.2rem;">{{ log.details }}</div>
+                  </td>
+                  <td>{{ log.actor_email }}</td>
+                  <td>
+                    <span style="font-size: 0.76rem; font-weight: 700; color: {{ 'var(--green)' if log.result == 'SUCCESS' else 'var(--red)' }};">
+                      {{ log.result }}
+                    </span>
+                  </td>
+                  <td class="muted" style="font-size: 0.78rem;">
+                    {{ log.timestamp[:16] }}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 1.5rem 1rem;">
+          <p class="muted">No security-relevant audit logs recorded yet.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+{% else %}
+  <!-- ==================== STUDENT DASHBOARD ==================== -->
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">Task #21 · FR-12 Analytics</p>
+      <h1>Student Preparation Dashboard</h1>
+      <p class="muted">Track your internship &amp; placement applications, test attempts, and preparation progress.</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <a class="btn btn-primary btn-small" href="{{ url_for('opportunities') }}">Browse Opportunities</a>
+      <a class="btn btn-ghost btn-small" href="{{ url_for('aptitude_tests') }}" style="color: var(--ink-soft); border-color: var(--line);">Practice Tests</a>
+    </div>
+  </header>
+
+  <!-- Student Key Metrics Grid -->
+  <section class="stats-grid">
+    <div class="card stat-card">
+      <span class="stat-label">Applications Submitted</span>
+      <span class="stat-num">{{ stats.total_apps }}</span>
+      <span class="stat-sub">
+        {% if stats.total_apps > 0 %}
+          {{ stats.app_status.Accepted }} accepted · {{ stats.app_status['Under Review'] + stats.app_status.Shortlisted }} in review
+        {% else %}
+          No applications yet
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="card stat-card">
+      <span class="stat-label">Assessments Attempted</span>
+      <span class="stat-num">{{ stats.total_attempts }}</span>
+      <span class="stat-sub">
+        {% if stats.total_attempts > 0 %}
+          {{ stats.distinct_tests }} distinct tests · {{ stats.passed_count }} passed
+        {% else %}
+          No tests taken yet
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="card stat-card">
+      <span class="stat-label">Average Test Score</span>
+      <span class="stat-num">
+        {% if stats.total_attempts > 0 %}
+          {{ stats.avg_score }}%
+        {% else %}
+          —
+        {% endif %}
+      </span>
+      <span class="stat-sub">
+        {% if stats.total_attempts > 0 %}
+          Best score: {{ stats.best_score }}%
+        {% else %}
+          Attempt tests to calculate
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="card stat-card">
+      <span class="stat-label">Curriculum Coverage</span>
+      <span class="stat-num">{{ stats.progress_percent }}%</span>
+      <span class="stat-sub">{{ stats.distinct_tests }} of {{ stats.total_active_tests }} categories attempted</span>
+    </div>
+  </section>
+
+  <!-- Preparation Progress & Curriculum Readiness -->
+  <section class="card" style="padding: 1.35rem 1.4rem; margin-bottom: 1.75rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+      <div>
+        <h2 style="font-size: 1.05rem;">Placement Preparation Readiness</h2>
+        <p class="muted" style="font-size: 0.85rem;">
+          Measurable preparation progress calculated from completed practice assessments across all published campus test categories.
+        </p>
+      </div>
+      <span class="badge" style="background: var(--brand-soft); color: var(--brand-dark); font-size: 0.82rem; padding: 0.35rem 0.75rem;">
+        Status: {{ stats.readiness_status }}
+      </span>
+    </div>
+
+    <div class="progress-track" style="margin: 1.1rem 0 0.5rem;">
+      <div class="progress-fill" style="width: {{ stats.progress_percent }}%;"></div>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted);">
+      <span>0% Initial</span>
+      <span>{{ stats.progress_percent }}% Completed ({{ stats.distinct_tests }}/{{ stats.total_active_tests }} tests attempted)</span>
+      <span>100% Placement Ready</span>
+    </div>
+
+    <!-- Active Assessments List -->
+    <div style="margin-top: 1.25rem; border-top: 1px dashed var(--line); padding-top: 1rem;">
+      <h3 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.75rem;">
+        Assessment Coverage Breakdown
+      </h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem;">
+        {% for t in stats.test_breakdown %}
+          <div style="padding: 0.75rem 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fafbfd; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="font-size: 0.88rem; display: block;">{{ t.name }}</strong>
+              <span class="muted" style="font-size: 0.75rem;">{{ t.category }}</span>
+            </div>
+            {% if t.attempt_count > 0 %}
+              <div style="text-align: right;">
+                <span class="badge badge-status-{{ 'accepted' if t.has_passed else 'rejected' }}" style="font-size: 0.72rem;">
+                  {{ t.best_percentage }}% · {{ 'Passed' if t.has_passed else 'Needs Practice' }}
+                </span>
+              </div>
+            {% else %}
+              <a class="btn btn-ghost btn-small" href="{{ url_for('take_aptitude_test', test_id=t.id) }}" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; color: var(--brand); border-color: #cbdcf7;">
+                Take Test
+              </a>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Application Pipeline & Recent Applications -->
+  <div class="dash-sections">
+    <!-- Left Column: Application Status & Recent Applications -->
+    <section class="card" style="padding: 1.25rem 1.4rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.05rem;">My Application Status</h2>
+        <a class="link-arrow" href="{{ url_for('applications') }}">All Applications &rarr;</a>
+      </div>
+
+      <!-- Application Status Pills -->
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.1rem;">
+        <span class="badge badge-status-submitted">Submitted: {{ stats.app_status.Submitted }}</span>
+        <span class="badge badge-status-under-review">Under Review: {{ stats.app_status['Under Review'] }}</span>
+        <span class="badge badge-status-shortlisted">Shortlisted: {{ stats.app_status.Shortlisted }}</span>
+        <span class="badge badge-status-accepted">Accepted: {{ stats.app_status.Accepted }}</span>
+        <span class="badge badge-status-rejected">Rejected: {{ stats.app_status.Rejected }}</span>
+      </div>
+
+      {% if stats.recent_applications %}
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Opportunity</th>
+                <th>Company</th>
+                <th>Status</th>
+                <th>Applied</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for app in stats.recent_applications %}
+                <tr>
+                  <td>
+                    <a href="{{ url_for('opportunity_detail', opportunity_id=app.opp_id) }}">
+                      <strong>{{ app.title }}</strong>
+                    </a>
+                  </td>
+                  <td>{{ app.company }}</td>
+                  <td>
+                    <span class="badge badge-status-{{ app.status|lower|replace(' ', '-') }}" style="font-size: 0.75rem;">
+                      {{ app.status }}
+                    </span>
+                  </td>
+                  <td class="muted" style="font-size: 0.8rem;">{{ app.applied_at[:10] }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 1.5rem 1rem;">
+          <p class="muted">You have not submitted any applications yet.</p>
+          <a class="btn btn-primary btn-small" href="{{ url_for('opportunities') }}" style="margin-top: 0.75rem;">
+            Explore Open Drives
+          </a>
+        </div>
+      {% endif %}
+    </section>
+
+    <!-- Right Column: Recent Aptitude Test Results -->
+    <section class="card" style="padding: 1.25rem 1.4rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.05rem;">Recent Test Attempts</h2>
+        <a class="link-arrow" href="{{ url_for('my_test_results') }}">All Results &rarr;</a>
+      </div>
+
+      {% if stats.recent_test_attempts %}
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Assessment</th>
+                <th>Score</th>
+                <th>Result</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for attempt in stats.recent_test_attempts %}
+                <tr>
+                  <td>
+                    <strong>{{ attempt.name }}</strong>
+                    <div class="muted" style="font-size: 0.75rem;">{{ attempt.category }}</div>
+                  </td>
+                  <td>
+                    <strong>{{ attempt.score }}/{{ attempt.total_questions }}</strong>
+                    <span class="muted" style="font-size: 0.78rem;">({{ attempt.percentage }}%)</span>
+                  </td>
+                  <td>
+                    <span class="badge badge-status-{{ 'accepted' if attempt.passed else 'rejected' }}" style="font-size: 0.75rem;">
+                      {{ 'Passed' if attempt.passed else 'Failed' }}
+                    </span>
+                  </td>
+                  <td class="muted" style="font-size: 0.8rem;">{{ attempt.completed_at[:10] }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 1.5rem 1rem;">
+          <p class="muted">You have not attempted any aptitude tests yet.</p>
+          <a class="btn btn-primary btn-small" href="{{ url_for('aptitude_tests') }}" style="margin-top: 0.75rem;">
+            Start an Assessment
+          </a>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+{% endif %}
+{% endblock %}
