@@ -12,7 +12,8 @@
       <p class="muted">System-wide overview of placement drives, student applications, and test performance.</p>
     </div>
     <div style="display: flex; gap: 0.5rem; align-items: center;">
-      <a class="btn btn-primary btn-small" href="{{ url_for('admin_users') }}">Manage Users</a>
+      <a class="btn btn-primary btn-small" href="{{ url_for('admin_aptitude_tests') }}">Manage Tests</a>
+      <a class="btn btn-ghost btn-small" href="{{ url_for('admin_users') }}" style="color: var(--ink-soft); border-color: var(--line);">Manage Users</a>
       <a class="btn btn-ghost btn-small" href="{{ url_for('opportunities') }}" style="color: var(--ink-soft); border-color: var(--line);">View Listings</a>
     </div>
   </header>

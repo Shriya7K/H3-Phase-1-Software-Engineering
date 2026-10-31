@@ -34,6 +34,10 @@
             Aptitude Tests
           </a>
           {% if session.get('user_role') == 'admin' %}
+            <a href="{{ url_for('admin_aptitude_tests') }}"
+               class="{{ 'active' if request.endpoint in ('admin_aptitude_tests', 'admin_create_test', 'admin_edit_test', 'admin_test_questions') }}">
+              Manage Tests
+            </a>
             <a href="{{ url_for('admin_users') }}"
                class="{{ 'active' if request.endpoint == 'admin_users' }}">
               Manage Users

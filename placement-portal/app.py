@@ -24,10 +24,12 @@ from datetime import date, datetime
 from functools import wraps
 from urllib.parse import urlparse
 
+import click
 from flask import (
     Flask,
     abort,
     flash,
+    g,
     jsonify,
     redirect,
     render_template,
@@ -37,7 +39,14 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from db import close_db, get_db, init_db
+from db import (
+    backup_database,
+    check_database_integrity,
+    close_db,
+    get_db,
+    init_db,
+    restore_database,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -793,6 +802,664 @@ def create_app(test_config: dict | None = None) -> Flask:
         return render_template("my_results.html", attempts=attempts)
 
     # -----------------------------------------------------------------------
+    # Task #27 · FR-14 Manage Aptitude Tests & Questions
+    # -----------------------------------------------------------------------
+
+    @app.get("/admin/tests")
+    @admin_required
+    def admin_aptitude_tests():
+        """Admin overview of all active and inactive aptitude tests (FR-14)."""
+        db = get_db()
+        search_query = (request.args.get("q") or "").strip()
+        active_category = (request.args.get("category") or "").strip()
+        active_status = (request.args.get("status") or "").strip().lower()
+
+        sql = """
+            SELECT t.id, t.name, t.category, t.description, t.num_questions,
+                   t.duration_minutes, t.difficulty, t.is_active,
+                   (SELECT COUNT(*) FROM test_questions WHERE test_id = t.id) AS actual_questions_count,
+                   (SELECT COUNT(*) FROM test_attempts WHERE test_id = t.id) AS attempts_count
+            FROM aptitude_tests t
+            WHERE 1=1
+        """
+        params: list[str] = []
+
+        if active_category:
+            sql += " AND t.category = ?"
+            params.append(active_category)
+
+        if active_status == "active":
+            sql += " AND t.is_active = 1"
+        elif active_status == "inactive":
+            sql += " AND t.is_active = 0"
+
+        if search_query:
+            sql += " AND (t.name LIKE ? OR t.category LIKE ? OR t.description LIKE ?)"
+            term = f"%{search_query}%"
+            params.extend([term, term, term])
+
+        sql += " ORDER BY t.id ASC"
+
+        tests = db.execute(sql, params).fetchall()
+
+        cat_rows = db.execute(
+            "SELECT DISTINCT category FROM aptitude_tests ORDER BY category ASC"
+        ).fetchall()
+        categories = [r["category"] for r in cat_rows]
+
+        summary = db.execute(
+            """
+            SELECT
+                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_cnt,
+                SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive_cnt
+            FROM aptitude_tests
+            """
+        ).fetchone()
+
+        active_count = summary["active_cnt"] or 0 if summary else 0
+        inactive_count = summary["inactive_cnt"] or 0 if summary else 0
+
+        q_count_row = db.execute(
+            "SELECT COUNT(*) AS cnt FROM test_questions"
+        ).fetchone()
+        total_questions = q_count_row["cnt"] if q_count_row else 0
+
+        return render_template(
+            "admin_tests.html",
+            tests=tests,
+            categories=categories,
+            active_category=active_category,
+            active_status=active_status,
+            search_query=search_query,
+            active_count=active_count,
+            inactive_count=inactive_count,
+            total_questions=total_questions,
+        )
+
+    @app.route("/admin/tests/new", methods=["GET", "POST"])
+    @admin_required
+    def admin_create_test():
+        """Create a new aptitude assessment (FR-14)."""
+        if request.method == "POST":
+            name = (request.form.get("name") or "").strip()
+            category = (request.form.get("category") or "").strip()
+            description = (request.form.get("description") or "").strip()
+            difficulty = (request.form.get("difficulty") or "Medium").strip()
+            duration_raw = request.form.get("duration_minutes") or "30"
+            is_active_raw = request.form.get("is_active") or "1"
+
+            if not name or len(name) < 2:
+                flash("Test title must be at least 2 characters.", "error")
+                return (
+                    render_template(
+                        "admin_test_form.html", mode="create", test=request.form
+                    ),
+                    400,
+                )
+
+            if not category:
+                flash("Category is required.", "error")
+                return (
+                    render_template(
+                        "admin_test_form.html", mode="create", test=request.form
+                    ),
+                    400,
+                )
+
+            if not description:
+                flash("Description is required.", "error")
+                return (
+                    render_template(
+                        "admin_test_form.html", mode="create", test=request.form
+                    ),
+                    400,
+                )
+
+            try:
+                duration_minutes = int(duration_raw)
+                if duration_minutes <= 0 or duration_minutes > 300:
+                    raise ValueError()
+            except ValueError:
+                flash(
+                    "Duration must be a positive number of minutes (1-300).",
+                    "error",
+                )
+                return (
+                    render_template(
+                        "admin_test_form.html", mode="create", test=request.form
+                    ),
+                    400,
+                )
+
+            if difficulty not in ("Easy", "Medium", "Hard"):
+                difficulty = "Medium"
+
+            is_active = 1 if str(is_active_raw) == "1" else 0
+
+            db = get_db()
+            cursor = db.execute(
+                """
+                INSERT INTO aptitude_tests
+                    (name, category, description, num_questions, duration_minutes, difficulty, is_active)
+                VALUES
+                    (?, ?, ?, 0, ?, ?, ?)
+                """,
+                (
+                    name,
+                    category,
+                    description,
+                    duration_minutes,
+                    difficulty,
+                    is_active,
+                ),
+            )
+            new_id = cursor.lastrowid
+            db.commit()
+
+            log_audit(
+                action="CREATE_APTITUDE_TEST",
+                details=(
+                    f"Created test '{name}' (ID #{new_id}) in category"
+                    f" '{category}'"
+                ),
+                result="SUCCESS",
+            )
+            flash(
+                f"Test '{name}' created successfully. Now add questions below.",
+                "success",
+            )
+            return redirect(url_for("admin_test_questions", test_id=new_id))
+
+        return render_template(
+            "admin_test_form.html", mode="create", test=None
+        )
+
+    @app.route("/admin/tests/<int:test_id>/edit", methods=["GET", "POST"])
+    @admin_required
+    def admin_edit_test(test_id: int):
+        """Edit test metadata, time limit, and difficulty (FR-14)."""
+        db = get_db()
+        test = db.execute(
+            "SELECT * FROM aptitude_tests WHERE id = ?", (test_id,)
+        ).fetchone()
+        if test is None:
+            abort(404)
+
+        if request.method == "POST":
+            name = (request.form.get("name") or "").strip()
+            category = (request.form.get("category") or "").strip()
+            description = (request.form.get("description") or "").strip()
+            difficulty = (request.form.get("difficulty") or "Medium").strip()
+            duration_raw = request.form.get("duration_minutes") or "30"
+            is_active_raw = request.form.get("is_active") or "1"
+
+            if not name or len(name) < 2:
+                flash("Test title must be at least 2 characters.", "error")
+                return (
+                    render_template(
+                        "admin_test_form.html",
+                        mode="edit",
+                        test=dict(test, **request.form),
+                    ),
+                    400,
+                )
+
+            if not category:
+                flash("Category is required.", "error")
+                return (
+                    render_template(
+                        "admin_test_form.html",
+                        mode="edit",
+                        test=dict(test, **request.form),
+                    ),
+                    400,
+                )
+
+            if not description:
+                flash("Description is required.", "error")
+                return (
+                    render_template(
+                        "admin_test_form.html",
+                        mode="edit",
+                        test=dict(test, **request.form),
+                    ),
+                    400,
+                )
+
+            try:
+                duration_minutes = int(duration_raw)
+                if duration_minutes <= 0 or duration_minutes > 300:
+                    raise ValueError()
+            except ValueError:
+                flash(
+                    "Duration must be a positive number of minutes (1-300).",
+                    "error",
+                )
+                return (
+                    render_template(
+                        "admin_test_form.html",
+                        mode="edit",
+                        test=dict(test, **request.form),
+                    ),
+                    400,
+                )
+
+            if difficulty not in ("Easy", "Medium", "Hard"):
+                difficulty = "Medium"
+
+            is_active = 1 if str(is_active_raw) == "1" else 0
+
+            db.execute(
+                """
+                UPDATE aptitude_tests
+                SET name = ?, category = ?, description = ?, duration_minutes = ?, difficulty = ?, is_active = ?
+                WHERE id = ?
+                """,
+                (
+                    name,
+                    category,
+                    description,
+                    duration_minutes,
+                    difficulty,
+                    is_active,
+                    test_id,
+                ),
+            )
+            db.commit()
+
+            log_audit(
+                action="UPDATE_APTITUDE_TEST",
+                details=f"Updated test #{test_id} ('{name}')",
+                result="SUCCESS",
+            )
+            flash(f"Test '{name}' updated successfully.", "success")
+            return redirect(url_for("admin_aptitude_tests"))
+
+        return render_template(
+            "admin_test_form.html", mode="edit", test=dict(test)
+        )
+
+    @app.post("/admin/tests/<int:test_id>/toggle")
+    @admin_required
+    def admin_toggle_test(test_id: int):
+        """Toggle test publication status (active/inactive) (FR-14)."""
+        db = get_db()
+        test = db.execute(
+            "SELECT id, name, is_active FROM aptitude_tests WHERE id = ?",
+            (test_id,),
+        ).fetchone()
+        if test is None:
+            abort(404)
+
+        new_status = 1 if test["is_active"] == 0 else 0
+        db.execute(
+            "UPDATE aptitude_tests SET is_active = ? WHERE id = ?",
+            (new_status, test_id),
+        )
+        db.commit()
+
+        status_label = "Active" if new_status == 1 else "Inactive"
+        log_audit(
+            action="TOGGLE_APTITUDE_TEST",
+            details=(
+                f"Toggled test #{test_id} ('{test['name']}') status to"
+                f" '{status_label}'"
+            ),
+            result="SUCCESS",
+        )
+        flash(f"Status for '{test['name']}' set to {status_label}.", "success")
+        return redirect(url_for("admin_aptitude_tests"))
+
+    @app.get("/admin/tests/<int:test_id>/questions")
+    @admin_required
+    def admin_test_questions(test_id: int):
+        """Manage questions for a specific aptitude assessment (FR-14)."""
+        db = get_db()
+        test = db.execute(
+            "SELECT * FROM aptitude_tests WHERE id = ?", (test_id,)
+        ).fetchone()
+        if test is None:
+            abort(404)
+
+        questions = db.execute(
+            """
+            SELECT id, test_id, question_text, option_a, option_b, option_c, option_d, correct_option
+            FROM test_questions
+            WHERE test_id = ?
+            ORDER BY id ASC
+            """,
+            (test_id,),
+        ).fetchall()
+
+        return render_template(
+            "admin_test_questions.html", test=dict(test), questions=questions
+        )
+
+    @app.post("/admin/tests/<int:test_id>/questions")
+    @admin_required
+    def admin_add_question(test_id: int):
+        """Add a new multiple-choice question to an assessment (FR-14)."""
+        db = get_db()
+        test = db.execute(
+            "SELECT id, name FROM aptitude_tests WHERE id = ?", (test_id,)
+        ).fetchone()
+        if test is None:
+            abort(404)
+
+        question_text = (request.form.get("question_text") or "").strip()
+        option_a = (request.form.get("option_a") or "").strip()
+        option_b = (request.form.get("option_b") or "").strip()
+        option_c = (request.form.get("option_c") or "").strip()
+        option_d = (request.form.get("option_d") or "").strip()
+        correct_option = (
+            request.form.get("correct_option") or ""
+        ).strip().upper()
+
+        if not question_text or len(question_text) < 4:
+            flash("Question text must be at least 4 characters long.", "error")
+            return (
+                redirect(url_for("admin_test_questions", test_id=test_id)),
+                400,
+            )
+
+        if not option_a or not option_b or not option_c or not option_d:
+            flash("All four options (A, B, C, D) are required.", "error")
+            return (
+                redirect(url_for("admin_test_questions", test_id=test_id)),
+                400,
+            )
+
+        if correct_option not in ("A", "B", "C", "D"):
+            flash("Correct option must be A, B, C, or D.", "error")
+            return (
+                redirect(url_for("admin_test_questions", test_id=test_id)),
+                400,
+            )
+
+        db.execute(
+            """
+            INSERT INTO test_questions
+                (test_id, question_text, option_a, option_b, option_c, option_d, correct_option)
+            VALUES
+                (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                test_id,
+                question_text,
+                option_a,
+                option_b,
+                option_c,
+                option_d,
+                correct_option,
+            ),
+        )
+        db.execute(
+            "UPDATE aptitude_tests SET num_questions = (SELECT COUNT(*) FROM"
+            " test_questions WHERE test_id = ?) WHERE id = ?",
+            (test_id, test_id),
+        )
+        db.commit()
+
+        log_audit(
+            action="ADD_TEST_QUESTION",
+            details=f"Added question to test #{test_id} ('{test['name']}')",
+            result="SUCCESS",
+        )
+        flash("Question added successfully.", "success")
+        return redirect(url_for("admin_test_questions", test_id=test_id))
+
+    @app.post("/admin/tests/<int:test_id>/questions/<int:question_id>/edit")
+    @admin_required
+    def admin_edit_question(test_id: int, question_id: int):
+        """Edit question text, options, or correct answer (FR-14)."""
+        db = get_db()
+        q = db.execute(
+            "SELECT id FROM test_questions WHERE id = ? AND test_id = ?",
+            (question_id, test_id),
+        ).fetchone()
+        if q is None:
+            abort(404)
+
+        question_text = (request.form.get("question_text") or "").strip()
+        option_a = (request.form.get("option_a") or "").strip()
+        option_b = (request.form.get("option_b") or "").strip()
+        option_c = (request.form.get("option_c") or "").strip()
+        option_d = (request.form.get("option_d") or "").strip()
+        correct_option = (
+            request.form.get("correct_option") or ""
+        ).strip().upper()
+
+        if not question_text or len(question_text) < 4:
+            flash("Question text must be at least 4 characters long.", "error")
+            return (
+                redirect(url_for("admin_test_questions", test_id=test_id)),
+                400,
+            )
+
+        if not option_a or not option_b or not option_c or not option_d:
+            flash("All four options (A, B, C, D) are required.", "error")
+            return (
+                redirect(url_for("admin_test_questions", test_id=test_id)),
+                400,
+            )
+
+        if correct_option not in ("A", "B", "C", "D"):
+            flash("Correct option must be A, B, C, or D.", "error")
+            return (
+                redirect(url_for("admin_test_questions", test_id=test_id)),
+                400,
+            )
+
+        db.execute(
+            """
+            UPDATE test_questions
+            SET question_text = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_option = ?
+            WHERE id = ? AND test_id = ?
+            """,
+            (
+                question_text,
+                option_a,
+                option_b,
+                option_c,
+                option_d,
+                correct_option,
+                question_id,
+                test_id,
+            ),
+        )
+        db.commit()
+
+        log_audit(
+            action="UPDATE_TEST_QUESTION",
+            details=f"Updated question #{question_id} for test #{test_id}",
+            result="SUCCESS",
+        )
+        flash("Question updated successfully.", "success")
+        return redirect(url_for("admin_test_questions", test_id=test_id))
+
+    @app.post("/admin/tests/<int:test_id>/questions/<int:question_id>/delete")
+    @admin_required
+    def admin_delete_question(test_id: int, question_id: int):
+        """Remove a question from an assessment (FR-14)."""
+        db = get_db()
+        q = db.execute(
+            "SELECT id FROM test_questions WHERE id = ? AND test_id = ?",
+            (question_id, test_id),
+        ).fetchone()
+        if q is None:
+            abort(404)
+
+        db.execute(
+            "DELETE FROM test_questions WHERE id = ? AND test_id = ?",
+            (question_id, test_id),
+        )
+        db.execute(
+            "UPDATE aptitude_tests SET num_questions = (SELECT COUNT(*) FROM"
+            " test_questions WHERE test_id = ?) WHERE id = ?",
+            (test_id, test_id),
+        )
+        db.commit()
+
+        log_audit(
+            action="DELETE_TEST_QUESTION",
+            details=f"Deleted question #{question_id} from test #{test_id}",
+            result="SUCCESS",
+        )
+        flash("Question deleted.", "success")
+        return redirect(url_for("admin_test_questions", test_id=test_id))
+
+    @app.post("/api/tests")
+    @admin_required
+    def api_create_test():
+        """Create aptitude test via REST API (FR-14)."""
+        data = request.get_json(silent=True) or {}
+        name = (data.get("name") or "").strip()
+        category = (data.get("category") or "").strip()
+        description = (data.get("description") or "").strip()
+        difficulty = (data.get("difficulty") or "Medium").strip()
+        duration_raw = data.get("duration_minutes", 30)
+        is_active = 1 if data.get("is_active", 1) in (1, True, "1") else 0
+
+        if not name or len(name) < 2:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "errorCode": "VALIDATION_ERROR",
+                        "message": (
+                            "Field 'name' is required (min 2 characters)."
+                        ),
+                    }
+                ),
+                400,
+            )
+
+        if not category:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "errorCode": "VALIDATION_ERROR",
+                        "message": "Field 'category' is required.",
+                    }
+                ),
+                400,
+            )
+
+        if not description:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "errorCode": "VALIDATION_ERROR",
+                        "message": "Field 'description' is required.",
+                    }
+                ),
+                400,
+            )
+
+        try:
+            duration_minutes = int(duration_raw)
+            if duration_minutes <= 0 or duration_minutes > 300:
+                raise ValueError()
+        except (ValueError, TypeError):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "errorCode": "VALIDATION_ERROR",
+                        "message": (
+                            "Field 'duration_minutes' must be a positive"
+                            " integer between 1 and 300."
+                        ),
+                    }
+                ),
+                400,
+            )
+
+        if difficulty not in ("Easy", "Medium", "Hard"):
+            difficulty = "Medium"
+
+        db = get_db()
+        cursor = db.execute(
+            """
+            INSERT INTO aptitude_tests
+                (name, category, description, num_questions, duration_minutes, difficulty, is_active)
+            VALUES
+                (?, ?, ?, 0, ?, ?, ?)
+            """,
+            (
+                name,
+                category,
+                description,
+                duration_minutes,
+                difficulty,
+                is_active,
+            ),
+        )
+        new_id = cursor.lastrowid
+        db.commit()
+
+        log_audit(
+            action="CREATE_APTITUDE_TEST",
+            details=f"Created aptitude test '{name}' (ID #{new_id}) via API",
+            result="SUCCESS",
+        )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": {
+                        "id": new_id,
+                        "name": name,
+                        "category": category,
+                        "description": description,
+                        "duration_minutes": duration_minutes,
+                        "difficulty": difficulty,
+                        "is_active": is_active,
+                        "num_questions": 0,
+                    },
+                    "message": "Aptitude test created successfully.",
+                }
+            ),
+            201,
+        )
+
+    @app.get("/api/tests")
+    @login_required
+    def api_list_tests():
+        """List tests via REST API (FR-09). Students only see active tests without answer keys."""
+        role = session.get("user_role", "student")
+        db = get_db()
+        if role == "admin":
+            rows = db.execute(
+                """
+                SELECT id, name, category, description, num_questions, duration_minutes, difficulty, is_active,
+                       (SELECT COUNT(*) FROM test_questions WHERE test_id = aptitude_tests.id) AS questions_count
+                FROM aptitude_tests
+                ORDER BY id ASC
+                """
+            ).fetchall()
+        else:
+            rows = db.execute(
+                """
+                SELECT id, name, category, description, num_questions, duration_minutes, difficulty
+                FROM aptitude_tests
+                WHERE is_active = 1
+                ORDER BY category ASC, name ASC
+                """
+            ).fetchall()
+
+        return jsonify(
+            {
+                "success": True,
+                "data": [dict(r) for r in rows],
+                "message": "Aptitude tests retrieved successfully.",
+            }
+        )
+
+    # -----------------------------------------------------------------------
     # Task #21 · FR-12 Analytics Dashboard
     # -----------------------------------------------------------------------
 
@@ -1300,15 +1967,65 @@ def create_app(test_config: dict | None = None) -> Flask:
             }
         )
 
-    # -- Errors & maintenance commands --------------------------------------
+    # -- Errors & maintenance commands (NFR-04, NFR-09) --------------------
 
     @app.errorhandler(404)
     def not_found(error):
+        if request.path.startswith("/api/"):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "errorCode": "NOT_FOUND",
+                        "message": "The requested resource was not found.",
+                    }
+                ),
+                404,
+            )
         return render_template("404.html"), 404
 
     @app.errorhandler(403)
     def forbidden(error):
+        if request.path.startswith("/api/"):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "errorCode": "FORBIDDEN",
+                        "message": (
+                            "You do not have permission to access this"
+                            " resource."
+                        ),
+                    }
+                ),
+                403,
+            )
         return render_template("404.html"), 403
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        """Rollback active transaction and present safe user message without stack traces (NFR-04)."""
+        connection = g.get("db")
+        if connection is not None:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+        if request.path.startswith("/api/"):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "errorCode": "INTERNAL_ERROR",
+                        "message": (
+                            "An unexpected internal error occurred. Please try"
+                            " again later."
+                        ),
+                    }
+                ),
+                500,
+            )
+        return render_template("500.html"), 500
 
     @app.cli.command("reset-db")
     def reset_db_command():
@@ -1318,6 +2035,43 @@ def create_app(test_config: dict | None = None) -> Flask:
             os.remove(database)
         init_db(app)
         print(f"Reset {database} with fresh demo data.")
+
+    @app.cli.command("backup-db")
+    @click.option(
+        "--output", default=None, help="Custom output path for backup file."
+    )
+    def backup_db_command(output: str | None):
+        """Create a safe, verified SQLite online backup (NFR-04, NFR-09)."""
+        try:
+            path = backup_database(app, output)
+            print(f"Database successfully backed up to: {path}")
+        except Exception as exc:
+            print(f"Backup failed: {exc}")
+
+    @app.cli.command("restore-db")
+    @click.argument("backup_path")
+    def restore_db_command(backup_path: str):
+        """Safely restore the active database from a verified backup (NFR-04, NFR-09)."""
+        try:
+            restore_database(app, backup_path)
+            print(f"Database successfully restored from: {backup_path}")
+        except Exception as exc:
+            print(f"Restore failed: {exc}")
+
+    @app.cli.command("check-integrity")
+    def check_integrity_command():
+        """Check SQLite B-tree, schema, and foreign-key integrity (NFR-04, NFR-09)."""
+        ok, errors = check_database_integrity(app.config["DATABASE"])
+        if ok:
+            print(
+                "Database integrity: OK (No corruptions or foreign-key"
+                " violations)."
+            )
+        else:
+            print(
+                "Database integrity ERRORS found:\n"
+                + "\n".join(f"- {e}" for e in errors)
+            )
 
     return app
 

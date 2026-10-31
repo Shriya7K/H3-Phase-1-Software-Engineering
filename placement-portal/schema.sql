@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS aptitude_tests (
     name             TEXT NOT NULL,
     category         TEXT NOT NULL,
     description      TEXT NOT NULL,
-    num_questions    INTEGER NOT NULL CHECK (num_questions > 0),
+    num_questions    INTEGER NOT NULL DEFAULT 0 CHECK (num_questions >= 0),
     duration_minutes INTEGER NOT NULL CHECK (duration_minutes > 0),
     difficulty       TEXT NOT NULL CHECK (difficulty IN ('Easy', 'Medium', 'Hard')),
     is_active        INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))

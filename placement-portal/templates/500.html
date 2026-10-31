@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Internal Server Error{% endblock %}
+
+{% block content %}
+<section class="error-wrap">
+  <div class="card error-card">
+    <p class="error-code">500</p>
+    <h1>Something went wrong</h1>
+    <p class="muted">An unexpected error occurred while processing your request. Please try again or return to the dashboard.</p>
+    <div style="margin-top: 1.25rem; display: flex; gap: 0.5rem; justify-content: center;">
+      <a class="btn btn-primary" href="{{ url_for('index') }}">Go back home</a>
+      <a class="btn btn-ghost" href="javascript:history.back()" style="border-color: var(--line);">Previous page</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
