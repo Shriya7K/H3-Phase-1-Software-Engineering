@@ -28,13 +28,177 @@ Team H3
 | 02_COMPLETE_IEEE_TEST_PLAN.docx | IEEE-style Test Plan |
 | 03_COMPLETE_TEST_CASES_15.docx | Functional, NFR and security test cases |
 | 04_COMPLETE_ARCHITECTURE_AND_DESIGN.docx | Architecture and Design Specification |
+| [docs/UML_DIAGRAMS.md](docs/UML_DIAGRAMS.md) | Comprehensive UML Specifications (Use Case, Class, Sequence, Component, State & ER) |
 
 ## UML Diagrams
 
-- Use Case Diagram
-- Component Diagram
-- Sequence Diagram: Login and Browse Opportunities
-- Sequence Diagram: Apply for Opportunity
+> Full diagrams, detailed sequence flows, and traceability are documented in [docs/UML_DIAGRAMS.md](docs/UML_DIAGRAMS.md).
+
+### 1. System Use Case Diagram
+
+```mermaid
+flowchart LR
+    Student(("fa:fa-user Student"))
+    Admin(("fa:fa-user-gear Administrator"))
+    Recruiter(("fa:fa-building Placement/Recruiter"))
+
+    subgraph AuthSubsystem["Authentication & Profile"]
+        UC1(["Register Account (FR-01)"])
+        UC2(["Login / Logout (FR-02)"])
+        UC3(["Manage Profile (FR-04)"])
+    end
+
+    subgraph OppSubsystem["Opportunity Subsystem"]
+        UC4(["Browse Opportunities (FR-05)"])
+        UC5(["Search & Filter (FR-06)"])
+        UC6(["View Details (FR-05)"])
+        UC7(["Post Opportunity (FR-13)"])
+    end
+
+    subgraph AppSubsystem["Application Pipeline"]
+        UC8(["Submit Application (FR-07)"])
+        UC9(["Track Status (FR-08)"])
+        UC10(["Update Status (FR-16)"])
+    end
+
+    subgraph TestSubsystem["Aptitude Assessment"]
+        UC11(["View Practice Tests (FR-09)"])
+        UC12(["Attempt Timed Test (FR-09)"])
+        UC13(["Instant Evaluation (FR-10)"])
+        UC14(["Manage Tests & Questions (FR-14)"])
+    end
+
+    subgraph AdminSubsystem["Analytics & Management"]
+        UC15(["Readiness Dashboard (FR-12)"])
+        UC16(["Admin Analytics (FR-12)"])
+        UC17(["User Management (FR-15)"])
+        UC18(["Audit Trail (SR-06)"])
+        UC19(["Backup & Recovery (NFR-04/09)"])
+    end
+
+    Student --> UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC8 & UC9 & UC11 & UC12 & UC13 & UC15
+    Recruiter --> UC2 & UC4 & UC7 & UC10
+    Admin --> UC2 & UC4 & UC7 & UC10 & UC14 & UC16 & UC17 & UC18 & UC19
+```
+
+### 2. Layered Component Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph PresentationTier["Presentation Layer"]
+        UI["Web Browser Client (HTML5 / Jinja2 / CSS3)"]
+    end
+
+    subgraph ControllerTier["Controller & Routing Layer (Flask)"]
+        Auth["Auth Controller (/register, /login)"]
+        Profile["Profile Controller (/profile)"]
+        Opps["Opportunities Controller (/opportunities)"]
+        Apps["Applications Controller (/applications)"]
+        Tests["Assessment Controller (/tests)"]
+        Dash["Analytics Controller (/dashboard)"]
+        AdminCtrl["Admin Management (/admin/users, /admin/tests)"]
+    end
+
+    subgraph SecurityTier["Security & Cross-Cutting"]
+        RBAC["RBAC Guards (@login_required, @admin_required)"]
+        Audit["Audit Logger (audit_logs / SR-06)"]
+        Err["Central Error Handlers (400, 403, 404, 500)"]
+    end
+
+    subgraph DataTier["Data Access & Persistence"]
+        DBMgr["Database Manager (db.py / SQLite WAL)"]
+        DB[("portal.sqlite")]
+        BackupStorage[("Backup Snapshots (instance/backups/)")]
+    end
+
+    UI --> ControllerTier
+    ControllerTier -.-> SecurityTier
+    ControllerTier --> DBMgr
+    SecurityTier --> DBMgr
+    DBMgr --> DB
+    DBMgr --> BackupStorage
+```
+
+### 3. Entity-Relationship (ER) Diagram
+
+```mermaid
+erDiagram
+    USERS ||--o| STUDENT_PROFILES : "owns (1:1)"
+    USERS ||--o{ APPLICATIONS : "submits (1:N)"
+    USERS ||--o{ TEST_ATTEMPTS : "takes (1:N)"
+    USERS ||--o{ AUDIT_LOGS : "acts (1:N)"
+    OPPORTUNITIES ||--o{ APPLICATIONS : "receives (1:N)"
+    APTITUDE_TESTS ||--|{ TEST_QUESTIONS : "contains (1:N)"
+    APTITUDE_TESTS ||--o{ TEST_ATTEMPTS : "records (1:N)"
+
+    USERS {
+        INTEGER id PK
+        TEXT name
+        TEXT email UK
+        TEXT password_hash
+        TEXT role
+    }
+    STUDENT_PROFILES {
+        INTEGER user_id PK, FK
+        TEXT usn
+        TEXT phone
+        TEXT department
+        INTEGER batch_year
+        REAL cgpa
+        TEXT skills
+    }
+    OPPORTUNITIES {
+        INTEGER id PK
+        TEXT title
+        TEXT company
+        TEXT type
+        TEXT location
+        TEXT stipend
+        TEXT deadline
+        INTEGER is_open
+    }
+    APPLICATIONS {
+        INTEGER id PK
+        INTEGER user_id FK
+        INTEGER opportunity_id FK
+        TEXT status
+        TEXT applied_at
+    }
+    APTITUDE_TESTS {
+        INTEGER id PK
+        TEXT name
+        TEXT category
+        INTEGER duration_minutes
+        TEXT difficulty
+        INTEGER is_active
+    }
+    TEST_QUESTIONS {
+        INTEGER id PK
+        INTEGER test_id FK
+        TEXT question_text
+        TEXT option_a
+        TEXT option_b
+        TEXT option_c
+        TEXT option_d
+        TEXT correct_option
+    }
+    TEST_ATTEMPTS {
+        INTEGER id PK
+        INTEGER user_id FK
+        INTEGER test_id FK
+        INTEGER score
+        REAL percentage
+        INTEGER passed
+    }
+    AUDIT_LOGS {
+        INTEGER id PK
+        INTEGER user_id FK
+        TEXT actor_email
+        TEXT action
+        TEXT result
+        TEXT timestamp
+    }
+```
 
 ## Sprint 1 Backlog Status: Closed
 
