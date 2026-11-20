@@ -9,3 +9,4 @@ instance/
 .coverage
 htmlcov/
 .DS_Store
+*.db

@@ -7,13 +7,16 @@
 
 <header class="page-head">
   <div>
-    <p class="eyebrow">Task #18 · FR-09 &amp; FR-10</p>
+    <p class="eyebrow">Tasks #17 &amp; #18 · FR-09 &amp; FR-10</p>
     <h1>{{ test.name }}</h1>
     <p class="muted">{{ test.description }}</p>
   </div>
-  <div style="display: flex; gap: 0.5rem; align-items: center;">
+  <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
     <span class="badge badge-category">{{ test.category }}</span>
     <span class="difficulty difficulty-{{ test.difficulty|lower }}">{{ test.difficulty }}</span>
+    <span id="test-timer" class="badge" style="background: #eef2ff; color: var(--brand); border: 1px solid var(--brand); font-weight: 600;">
+      &#9201; Time: <span id="timer-display">{{ test.duration_minutes }}:00</span>
+    </span>
   </div>
 </header>
 
@@ -36,7 +39,7 @@
 
           <div style="display: grid; gap: 0.6rem; margin-top: 0.75rem;">
             <label class="option-label">
-              <input type="radio" name="question_{{ q.id }}" value="A" required>
+              <input type="radio" name="question_{{ q.id }}" value="A">
               <span class="option-tag">A</span>
               <span class="option-text">{{ q.option_a }}</span>
             </label>
@@ -74,5 +77,33 @@
     <p class="muted">Questions for this assessment are being prepared. Please check back later.</p>
     <a class="btn btn-primary" href="{{ url_for('aptitude_tests') }}" style="margin-top: 1rem;">Back to Aptitude Tests</a>
   </div>
+{% endif %}
+
+{% if questions and test.duration_minutes %}
+<script>
+(function() {
+  var durationMinutes = {{ test.duration_minutes }};
+  var totalSeconds = durationMinutes * 60;
+  var timerDisplay = document.getElementById('timer-display');
+  
+  if (timerDisplay) {
+    var interval = setInterval(function() {
+      totalSeconds--;
+      if (totalSeconds < 0) {
+        clearInterval(interval);
+        timerDisplay.textContent = "Time's up!";
+        timerDisplay.style.color = "#dc2626";
+        return;
+      }
+      var mins = Math.floor(totalSeconds / 60);
+      var secs = totalSeconds % 60;
+      timerDisplay.textContent = (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs;
+      if (totalSeconds <= 120) {
+        timerDisplay.style.color = "#dc2626";
+      }
+    }, 1000);
+  }
+})();
+</script>
 {% endif %}
 {% endblock %}
