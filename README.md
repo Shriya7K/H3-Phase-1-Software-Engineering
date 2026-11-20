@@ -42,50 +42,72 @@ Team H3
 
 ### 1. System Use Case Diagram
 
+![Online Internship & Placement Preparation Portal — Use Case Diagram](docs/images/use_case_diagram.png)
+
+*Direct image file: [docs/images/use_case_diagram.png](docs/images/use_case_diagram.png) | [JPG](docs/images/use_case_diagram.jpg)*
+
 ```mermaid
 flowchart LR
+    %% Actors
     Student(("fa:fa-user Student"))
-    Admin(("fa:fa-user-gear Administrator"))
-    Recruiter(("fa:fa-building Placement/Recruiter"))
+    Recruiter(("fa:fa-user-tie Recruiter"))
+    Admin(("fa:fa-user-gear Admin"))
 
-    subgraph AuthSubsystem["Authentication & Profile"]
-        UC1(["Register Account (FR-01)"])
-        UC2(["Login / Logout (FR-02)"])
-        UC3(["Manage Profile (FR-04)"])
+    subgraph Portal["Online Internship & Placement Preparation Portal"]
+        subgraph StudentCore["Student Operations"]
+            UC1(["Register / Log in"])
+            UC2(["Manage Student Profile"])
+            UC3(["Browse / Search Opportunities"])
+            UC4(["View Opportunity Details"])
+            UC5(["Submit Application"])
+            UC6(["Track Application Status"])
+            UC7(["View / Attempt Aptitude Tests"])
+            UC8(["View Test Results"])
+        end
+
+        subgraph StudentAnalytics["Student Analytics & Progress"]
+            UC9(["View Student Dashboard"])
+            UC10(["Track Preparation Progress"])
+            UC11(["View Application Analytics"])
+            UC12(["View Aptitude Performance"])
+        end
+
+        subgraph AdminRecruiter["Recruiter & Administrative Operations"]
+            UC13(["Create / Edit Opportunities"])
+            UC14(["Manage Applications"])
+            UC15(["Manage User Accounts"])
+            UC16(["Manage Aptitude Questions"])
+            UC17(["Validate Role Permissions"])
+        end
     end
 
-    subgraph OppSubsystem["Opportunity Subsystem"]
-        UC4(["Browse Opportunities (FR-05)"])
-        UC5(["Search & Filter (FR-06)"])
-        UC6(["View Details (FR-05)"])
-        UC7(["Post Opportunity (FR-13)"])
-    end
+    %% Student Associations
+    Student --- UC1
+    Student --- UC2
+    Student --- UC3
+    Student --- UC4
+    Student --- UC5
+    Student --- UC6
+    Student --- UC7
+    Student --- UC8
+    Student --- UC9
+    Student --- UC10
+    Student --- UC11
+    Student --- UC12
 
-    subgraph AppSubsystem["Application Pipeline"]
-        UC8(["Submit Application (FR-07)"])
-        UC9(["Track Status (FR-08)"])
-        UC10(["Update Status (FR-16)"])
-    end
+    %% Recruiter Associations
+    UC13 --- Recruiter
+    UC14 --- Recruiter
 
-    subgraph TestSubsystem["Aptitude Assessment"]
-        UC11(["View Practice Tests (FR-09)"])
-        UC12(["Attempt Timed Test (FR-09)"])
-        UC13(["Instant Evaluation (FR-10)"])
-        UC14(["Manage Tests & Questions (FR-14)"])
-    end
-
-    subgraph AdminSubsystem["Analytics & Management"]
-        UC15(["Readiness Dashboard (FR-12)"])
-        UC16(["Admin Analytics (FR-12)"])
-        UC17(["User Management (FR-15)"])
-        UC18(["Audit Trail (SR-06)"])
-        UC19(["Backup & Recovery (NFR-04/09)"])
-    end
-
-    Student --> UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC8 & UC9 & UC11 & UC12 & UC13 & UC15
-    Recruiter --> UC2 & UC4 & UC7 & UC10
-    Admin --> UC2 & UC4 & UC7 & UC10 & UC14 & UC16 & UC17 & UC18 & UC19
+    %% Admin Associations
+    UC13 --- Admin
+    UC14 --- Admin
+    UC15 --- Admin
+    UC16 --- Admin
+    UC17 --- Admin
 ```
+
+*Associations show which role can initiate each function.*
 
 ### 2. Layered Component Architecture Diagram
 

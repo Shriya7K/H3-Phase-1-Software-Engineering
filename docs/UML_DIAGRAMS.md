@@ -25,81 +25,78 @@ This document contains the complete unified Modeling Language (UML) specificatio
 
 ## 1. System Use Case Diagram
 
-The use case diagram outlines interactions between actors (**Student**, **Administrator**, and **Recruiter / Placement Officer**) and the portal's core functional subsystems.
+The use case diagram outlines interactions between actors (**Student**, **Recruiter**, and **Admin**) and the portal's core functional capabilities.
+
+![Online Internship & Placement Preparation Portal — Use Case Diagram](images/use_case_diagram.png)
+
+*Direct image files:*
+* [docs/images/use_case_diagram.png](images/use_case_diagram.png)
+* [docs/images/use_case_diagram.jpg](images/use_case_diagram.jpg)
+
+### Interactive System Use Case Model
 
 ```mermaid
 flowchart LR
     %% Actors
     Student(("fa:fa-user Student"))
-    Admin(("fa:fa-user-gear Administrator"))
-    Recruiter(("fa:fa-building Placement/Recruiter"))
+    Recruiter(("fa:fa-user-tie Recruiter"))
+    Admin(("fa:fa-user-gear Admin"))
 
-    %% Subsystems
-    subgraph AuthSubsystem["Authentication & Profile Subsystem"]
-        UC1(["Register Account (FR-01)"])
-        UC2(["Login / Logout & Session (FR-02)"])
-        UC3(["Manage Student Profile (FR-04)"])
+    subgraph Portal["Online Internship & Placement Preparation Portal"]
+        subgraph StudentCore["Student Operations"]
+            UC1(["Register / Log in"])
+            UC2(["Manage Student Profile"])
+            UC3(["Browse / Search Opportunities"])
+            UC4(["View Opportunity Details"])
+            UC5(["Submit Application"])
+            UC6(["Track Application Status"])
+            UC7(["View / Attempt Aptitude Tests"])
+            UC8(["View Test Results"])
+        end
+
+        subgraph StudentAnalytics["Student Analytics & Progress"]
+            UC9(["View Student Dashboard"])
+            UC10(["Track Preparation Progress"])
+            UC11(["View Application Analytics"])
+            UC12(["View Aptitude Performance"])
+        end
+
+        subgraph AdminRecruiter["Recruiter & Administrative Operations"]
+            UC13(["Create / Edit Opportunities"])
+            UC14(["Manage Applications"])
+            UC15(["Manage User Accounts"])
+            UC16(["Manage Aptitude Questions"])
+            UC17(["Validate Role Permissions"])
+        end
     end
 
-    subgraph OppSubsystem["Opportunity Subsystem"]
-        UC4(["Browse Opportunities (FR-05)"])
-        UC5(["Search & Filter by Category/Eligibility (FR-06)"])
-        UC6(["View Opportunity Details (FR-05)"])
-        UC7(["Create/Post Opportunity (FR-13)"])
-    end
+    %% Student Associations
+    Student --- UC1
+    Student --- UC2
+    Student --- UC3
+    Student --- UC4
+    Student --- UC5
+    Student --- UC6
+    Student --- UC7
+    Student --- UC8
+    Student --- UC9
+    Student --- UC10
+    Student --- UC11
+    Student --- UC12
 
-    subgraph AppSubsystem["Application Pipeline Subsystem"]
-        UC8(["Submit Application (FR-07)"])
-        UC9(["Track Application Status (FR-08)"])
-        UC10(["Update Application Status (FR-16)"])
-    end
+    %% Recruiter Associations
+    UC13 --- Recruiter
+    UC14 --- Recruiter
 
-    subgraph TestSubsystem["Aptitude Assessment Subsystem"]
-        UC11(["View Practice Tests (FR-09)"])
-        UC12(["Attempt Timed Aptitude Test (FR-09)"])
-        UC13(["Instant Score & Result Evaluation (FR-10)"])
-        UC14(["Manage Tests & Question Bank (FR-14)"])
-    end
-
-    subgraph AdminSubsystem["Analytics, Auditing & Maintenance Subsystem"]
-        UC15(["View Student Readiness Dashboard (FR-12)"])
-        UC16(["View Admin Analytics Dashboard (FR-12)"])
-        UC17(["Manage Users & Role Assignment (FR-15)"])
-        UC18(["Inspect Security Audit Trail (SR-06)"])
-        UC19(["Execute Database Backup & Recovery (NFR-04/09)"])
-    end
-
-    %% Student Relationships
-    Student --> UC1
-    Student --> UC2
-    Student --> UC3
-    Student --> UC4
-    Student --> UC5
-    Student --> UC6
-    Student --> UC8
-    Student --> UC9
-    Student --> UC11
-    Student --> UC12
-    Student --> UC13
-    Student --> UC15
-
-    %% Recruiter Relationships
-    Recruiter --> UC2
-    Recruiter --> UC4
-    Recruiter --> UC7
-    Recruiter --> UC10
-
-    %% Administrator Relationships
-    Admin --> UC2
-    Admin --> UC4
-    Admin --> UC7
-    Admin --> UC10
-    Admin --> UC14
-    Admin --> UC16
-    Admin --> UC17
-    Admin --> UC18
-    Admin --> UC19
+    %% Admin Associations
+    UC13 --- Admin
+    UC14 --- Admin
+    UC15 --- Admin
+    UC16 --- Admin
+    UC17 --- Admin
 ```
+
+*Note: Associations show which role can initiate each function.*
 
 ---
 
