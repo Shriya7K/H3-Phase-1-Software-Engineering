@@ -24,11 +24,17 @@ Team H3
 
 | Document | Description |
 |---|---|
-| 01_COMPLETE_SRS_IEEE_STYLE.docx | Complete SRS |
+| 01_COMPLETE_SRS_IEEE_STYLE.docx | Complete SRS (IEEE format) |
 | 02_COMPLETE_IEEE_TEST_PLAN.docx | IEEE-style Test Plan |
-| 03_COMPLETE_TEST_CASES_15.docx | Functional, NFR and security test cases |
+| 03_COMPLETE_TEST_CASES_15.docx | Baseline functional, NFR and security test cases |
 | 04_COMPLETE_ARCHITECTURE_AND_DESIGN.docx | Architecture and Design Specification |
 | [docs/UML_DIAGRAMS.md](docs/UML_DIAGRAMS.md) | Comprehensive UML Specifications (Use Case, Class, Sequence, Component, State & ER) |
+| [docs/TEST_CASE_SPECIFICATION.md](docs/TEST_CASE_SPECIFICATION.md) | Updated Test Case Specification (TC-01 to TC-33 covering Sprints 1 & 2) |
+| [docs/UNIT_TEST_REPORT.md](docs/UNIT_TEST_REPORT.md) | Unit Test Report (135/135 tests passing) |
+| [docs/SYSTEM_VALIDATION_REPORT.md](docs/SYSTEM_VALIDATION_REPORT.md) | System Validation Report (100% requirements verified) |
+| [docs/CODE_COVERAGE_REPORT.md](docs/CODE_COVERAGE_REPORT.md) | Code Coverage Report (91% statement coverage) |
+| [docs/BRANCH_COVERAGE_REPORT.md](docs/BRANCH_COVERAGE_REPORT.md) | Branch Coverage Report (75% branch coverage) |
+| [docs/SPRINT_3_REPORT.md](docs/SPRINT_3_REPORT.md) | Sprint 3 Quality Hardening & Part-3 Deliverables Report |
 
 ## UML Diagrams
 

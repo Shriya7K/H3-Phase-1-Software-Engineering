@@ -6,4 +6,6 @@ venv/
 instance/
 *.sqlite
 *.sqlite3
+.coverage
+htmlcov/
 .DS_Store

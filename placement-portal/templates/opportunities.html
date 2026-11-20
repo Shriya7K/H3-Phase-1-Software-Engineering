@@ -108,7 +108,7 @@
             {{ deadline_label(opportunity.days_left) }}
           </span>
           <a class="link-arrow"
-             href="{{ url_for('opportunity_detail', opportunity_id=opportunity.id) }}">
+             href="/opportunities/{{ opportunity.id }}">
             View details <span aria-hidden="true">&rarr;</span>
           </a>
         </div>
